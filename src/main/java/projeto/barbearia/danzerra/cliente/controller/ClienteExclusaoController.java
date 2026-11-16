@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import projeto.barbearia.danzerra.cliente.service.ClienteService;
 
 @RestController
-@RequestMapping("/api/clientes")
+@RequestMapping("/api/apagar_cliente")
 public class ClienteExclusaoController {
 
     private final ClienteService clientes;

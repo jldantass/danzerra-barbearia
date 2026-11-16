@@ -11,7 +11,7 @@ import projeto.barbearia.danzerra.administrador.dto.AdministradorCadastroRequest
 import projeto.barbearia.danzerra.administrador.service.AdministradorService;
 
 @RestController
-@RequestMapping("/api/cadastro")
+@RequestMapping("/api/cadastrar_administrador")
 public class AdministradorCadastroController {
 
     private final AdministradorService administradores;

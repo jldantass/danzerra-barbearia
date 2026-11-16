@@ -13,7 +13,7 @@ import projeto.barbearia.danzerra.cliente.dto.ClienteResponse;
 import projeto.barbearia.danzerra.cliente.service.ClienteService;
 
 @RestController
-@RequestMapping("/api/clientes")
+@RequestMapping("/api/atualizar_cliente")
 public class ClienteAtualizacaoController {
 
     private final ClienteService clientes;

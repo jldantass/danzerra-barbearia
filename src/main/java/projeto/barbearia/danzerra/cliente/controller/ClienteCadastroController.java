@@ -14,7 +14,7 @@ import projeto.barbearia.danzerra.cliente.dto.ClienteResponse;
 import projeto.barbearia.danzerra.cliente.service.ClienteService;
 
 @RestController
-@RequestMapping("/api/clientes")
+@RequestMapping("/api/cadastrar_cliente")
 public class ClienteCadastroController {
 
     private final ClienteService clientes;
