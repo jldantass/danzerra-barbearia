@@ -13,7 +13,8 @@ public final class ServicoMapper {
                 servico.getId(),
                 servico.getNome(),
                 servico.getPrecoAvulso(),
-                servico.getDuracaoMinutos()
+                servico.getDuracaoMinutos(),
+                servico.isAtivo()
         );
     }
 }

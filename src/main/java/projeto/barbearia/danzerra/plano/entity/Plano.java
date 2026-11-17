@@ -31,6 +31,9 @@ public class Plano {
     @Column(nullable = false)
     private boolean ativo;
 
+    @Column(nullable = false)
+    private boolean excluido;
+
     @ElementCollection
     @CollectionTable(name = "plano_beneficios", joinColumns = @JoinColumn(name = "plano_id"))
     private List<PlanoBeneficio> beneficios = new ArrayList<>();
@@ -56,6 +59,12 @@ public class Plano {
 
     public void definirAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public void removerDoCatalogo() {
+        this.ativo = false;
+        this.excluido = true;
+        this.beneficios.clear();
     }
 
     public Long getId() {

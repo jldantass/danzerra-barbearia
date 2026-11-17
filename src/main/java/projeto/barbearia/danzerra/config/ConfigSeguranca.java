@@ -22,6 +22,9 @@ public class ConfigSeguranca {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/", "/index.html",
+                                "/painel.css", "/painel.js", "/api-painel.js", "/perfil-cliente.js",
+                                "/operacao.js", "/login-barbearia.webp").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .anyRequest().hasRole("ADMIN"))

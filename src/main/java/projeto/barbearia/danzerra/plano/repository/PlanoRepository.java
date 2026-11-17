@@ -14,14 +14,12 @@ import projeto.barbearia.danzerra.plano.entity.Plano;
 
 public interface PlanoRepository extends JpaRepository<Plano, Long> {
 
-    @Override
     @EntityGraph(attributePaths = {"beneficios", "beneficios.servico"})
-    List<Plano> findAll(Sort ordenacao);
+    List<Plano> findAllByExcluidoFalse(Sort ordenacao);
 
-    @Override
     @EntityGraph(attributePaths = {"beneficios", "beneficios.servico"})
-    Optional<Plano> findById(Long id);
+    Optional<Plano> findByIdAndExcluidoFalse(Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Plano> findPlanoById(Long id);
+    Optional<Plano> findPlanoByIdAndExcluidoFalse(Long id);
 }

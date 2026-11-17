@@ -45,14 +45,14 @@ public class PlanoService {
 
     @Transactional(readOnly = true)
     public List<PlanoResponse> listar() {
-        return planos.findAll(Sort.by("id")).stream()
+        return planos.findAllByExcluidoFalse(Sort.by("id")).stream()
                 .map(PlanoMapper::paraResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public PlanoResponse consultar(Long id) {
-        Plano plano = planos.findById(id)
+        Plano plano = planos.findByIdAndExcluidoFalse(id)
                 .orElseThrow(() -> new PlanoNaoEncontradoException(id));
         return PlanoMapper.paraResponse(plano);
     }
@@ -84,11 +84,11 @@ public class PlanoService {
 
     @Transactional
     public void remover(Long id) {
-        planos.delete(buscarParaAlteracao(id));
+        buscarParaAlteracao(id).removerDoCatalogo();
     }
 
     private Plano buscarParaAlteracao(Long id) {
-        return planos.findPlanoById(id)
+        return planos.findPlanoByIdAndExcluidoFalse(id)
                 .orElseThrow(() -> new PlanoNaoEncontradoException(id));
     }
 

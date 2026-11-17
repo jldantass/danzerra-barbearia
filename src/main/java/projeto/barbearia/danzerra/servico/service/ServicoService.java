@@ -38,8 +38,11 @@ public class ServicoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ServicoResponse> listar() {
-        List<Servico> catalogo = servicos.findAllByAtivoTrue(Sort.by("nome", "id"));
+    public List<ServicoResponse> listar(boolean incluirInativos) {
+        Sort ordenacao = Sort.by("nome", "id");
+        List<Servico> catalogo = incluirInativos
+                ? servicos.findAll(ordenacao)
+                : servicos.findAllByAtivoTrue(ordenacao);
         return catalogo.stream()
                 .map(ServicoMapper::paraResponse)
                 .toList();

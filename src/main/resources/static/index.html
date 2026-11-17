@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b415a">
+    <title>Entrar · Barbearia</title>
+    <link rel="stylesheet" href="/painel.css">
+    <script type="module" src="/painel.js"></script>
+</head>
+<body>
+    <div id="inicializando" class="inicializando" role="status">Carregando Danzerra…</div>
+
+    <main id="acesso" class="acesso" hidden>
+        <section class="acesso-area" aria-labelledby="acesso-titulo">
+            <form id="login-form" class="login-form">
+                <header class="login-introducao">
+                    <h1 id="acesso-titulo">Entrar</h1>
+                    <p>Faça Login para ter acesso ao sistema</p>
+                </header>
+                <label>Usuário <input name="login" autocomplete="username" required></label>
+                <div class="grupo-senha">
+                    <label for="senha-login">Senha</label>
+                    <div class="campo-senha"><input id="senha-login" name="senha" type="password" autocomplete="current-password" required></div>
+                </div>
+                <p id="login-erro" class="mensagem erro" role="alert" hidden></p>
+                <button class="botao primario" type="submit">Entrar no painel</button>
+            </form>
+        </section>
+        <div class="acesso-fotografia" aria-hidden="true">
+            <img src="/login-barbearia.webp" width="1400" height="959" alt="" decoding="async">
+        </div>
+    </main>
+
+    <div id="painel" class="painel" hidden>
+        <aside class="lateral">
+            <button id="nome-barbearia" class="nome-barbearia" type="button" title="Editar nome da barbearia"></button>
+            <nav class="navegacao" aria-label="Seções do painel">
+                <!-- Lucide icons (https://lucide.dev), ISC License.
+                Copyright (c) 2026 Lucide Icons and Contributors
+                Permission to use, copy, modify, and/or distribute this software for any purpose
+                with or without fee is hereby granted, provided that the above copyright notice
+                and this permission notice appear in all copies.
+                THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+                WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+                AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+                INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+                LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+                OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+                OF THIS SOFTWARE. -->
+                <button type="button" data-secao="hoje">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+                        <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    </svg><span>Hoje</span>
+                </button>
+                <button type="button" data-secao="agenda">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 2v3 M16 2v3 M3 9h18 M8 13h.01 M12 13h.01 M16 13h.01 M8 17h.01 M12 17h.01 M16 17h.01" />
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                    </svg><span>Agenda</span>
+                </button>
+                <button type="button" data-secao="clientes">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 21a8 8 0 0 0-16 0" />
+                        <circle cx="10" cy="8" r="5" />
+                        <path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" />
+                    </svg><span>Clientes</span>
+                </button>
+                <button type="button" data-secao="servicos">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+                        <path d="M8.12 8.12 12 12 M20 4 8.12 15.88 M14.8 14.8 20 20" />
+                    </svg><span>Serviços</span>
+                </button>
+                <button type="button" data-secao="planos">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                        <path d="M13 5v2 M13 17v2 M13 11v2" />
+                    </svg><span>Planos</span>
+                </button>
+                <button type="button" data-secao="atendimentos">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        <path d="M12 11h4 M12 16h4 M8 11h.01 M8 16h.01" />
+                    </svg><span>Atendimentos</span>
+                </button>
+                <button type="button" data-secao="financeiro">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+                        <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+                    </svg><span>Financeiro</span>
+                </button>
+            </nav>
+            <div class="conta">
+                <span id="usuario" class="usuario"></span>
+                <div class="conta-acoes">
+                    <button id="novo-admin" class="botao discreto" type="button">Novo administrador</button>
+                    <button id="sair" class="botao discreto" type="button">Sair</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="principal" aria-labelledby="secao-titulo">
+            <div class="topo"><time id="data"></time></div>
+            <header class="cabecalho">
+                <div>
+                    <h1 id="secao-titulo" tabindex="-1"></h1>
+                    <p id="secao-descricao"></p>
+                </div>
+                <button id="novo" class="botao primario" type="button"></button>
+            </header>
+            <p id="painel-aviso" class="mensagem" role="status" hidden></p>
+            <section id="operacao" aria-label="Dados da seção" hidden></section>
+            <section id="lista-catalogo" class="registro" aria-labelledby="registro-titulo">
+                <div class="registro-topo">
+                    <div><h2 id="registro-titulo"></h2><p id="quantidade"></p></div>
+                    <div id="busca-clientes" class="busca" role="search" aria-label="Buscar clientes" hidden>
+                        <label class="sr-only" for="busca-texto">Nome ou celular</label>
+                        <input type="search" id="busca-texto" placeholder="Nome ou celular">
+                    </div>
+                </div>
+                <div id="resultados" aria-busy="false"></div>
+                <div id="paginacao" class="paginacao" hidden>
+                    <button id="anterior" class="botao secundario" type="button">Anterior</button>
+                    <p id="pagina"></p>
+                    <button id="proxima" class="botao secundario" type="button">Próxima</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <dialog id="editor" class="dialogo" aria-labelledby="editor-titulo">
+        <form id="editor-form">
+            <header class="dialogo-topo">
+                <h2 id="editor-titulo"></h2>
+                <button class="botao discreto" type="button" data-fechar="editor">Fechar</button>
+            </header>
+            <div id="editor-campos" class="editor-campos"></div>
+            <p id="editor-erro" class="mensagem erro" role="alert" hidden></p>
+            <footer class="dialogo-acoes">
+                <button class="botao secundario" type="button" data-fechar="editor">Cancelar</button>
+                <button id="salvar" class="botao primario" type="submit">Salvar</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog id="exclusao" class="dialogo dialogo-curto" aria-labelledby="exclusao-titulo">
+        <form id="exclusao-form">
+            <header class="dialogo-topo"><h2 id="exclusao-titulo"></h2></header>
+            <p id="exclusao-texto"></p>
+            <p id="exclusao-erro" class="mensagem erro" role="alert" hidden></p>
+            <footer class="dialogo-acoes">
+                <button class="botao secundario" type="button" data-fechar="exclusao" autofocus>Cancelar</button>
+                <button class="botao destrutivo" type="submit">Apagar</button>
+            </footer>
+        </form>
+    </dialog>
+    <dialog id="perfil-cliente" class="dialogo perfil-cliente" aria-labelledby="perfil-titulo">
+        <section class="perfil-conteudo">
+            <header class="dialogo-topo">
+                <div>
+                    <h2 id="perfil-titulo"></h2>
+                    <p id="perfil-celular" class="ajuda numero"></p>
+                </div>
+                <button id="perfil-fechar" class="botao discreto" type="button">Fechar</button>
+            </header>
+            <div id="perfil-dados" aria-busy="false"></div>
+            <p id="perfil-erro" class="mensagem erro" role="alert" hidden></p>
+            <p id="perfil-aviso" class="mensagem" role="status" hidden></p>
+            <button id="perfil-adicionar" class="botao primario" type="button" hidden>Adicionar plano</button>
+            <form id="perfil-contratacao" hidden>
+                <label>Plano mensal
+                    <select id="perfil-plano" required></select>
+                </label>
+                <p id="perfil-ajuda" class="ajuda"></p>
+                <footer class="dialogo-acoes">
+                    <button id="perfil-cancelar" class="botao secundario" type="button">Cancelar</button>
+                    <button id="perfil-confirmar" class="botao primario" type="submit">Confirmar</button>
+                </footer>
+            </form>
+            <section class="perfil-agenda" aria-labelledby="perfil-agenda-titulo">
+                <h3 id="perfil-agenda-titulo">Agendamentos</h3>
+                <div id="perfil-agendamentos" aria-busy="false"></div>
+            </section>
+        </section>
+    </dialog>
+
+    <dialog id="atendimento-detalhes" class="dialogo" aria-labelledby="atendimento-titulo">
+        <div class="atendimento-conteudo">
+            <header class="dialogo-topo">
+                <h2 id="atendimento-titulo"></h2>
+                <button id="atendimento-fechar" class="botao discreto" type="button" autofocus>Fechar</button>
+            </header>
+            <div id="atendimento-dados"></div>
+            <footer id="atendimento-acoes" class="dialogo-acoes"></footer>
+        </div>
+    </dialog>
+
+    <dialog id="operacao-dialogo" class="dialogo" aria-labelledby="operacao-dialogo-titulo">
+        <form id="operacao-form">
+            <header class="dialogo-topo">
+                <h2 id="operacao-dialogo-titulo"></h2>
+                <button id="operacao-fechar" class="botao discreto" type="button">Fechar</button>
+            </header>
+            <div id="operacao-campos" class="editor-campos"></div>
+            <p id="operacao-erro" class="mensagem erro" role="alert" hidden></p>
+            <footer class="dialogo-acoes">
+                <button id="operacao-cancelar" class="botao secundario" type="button">Cancelar</button>
+                <button id="operacao-confirmar" class="botao primario" type="submit">Salvar</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <template id="controle-senha">
+        <button class="mostrar-senha" type="button" aria-label="Mostrar senha" title="Mostrar senha">
+            <svg data-olho-aberto viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
+                <circle cx="12" cy="12" r="2.5"/>
+            </svg>
+            <svg data-olho-fechado viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+                <path d="M3 3l18 18M10.6 6.1A11 11 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3.2 3.5M6.5 7.6A15 15 0 0 0 2 12s3.5 6 10 6c1.7 0 3.2-.4 4.5-1"/>
+            </svg>
+        </button>
+    </template>
+</body>
+</html>

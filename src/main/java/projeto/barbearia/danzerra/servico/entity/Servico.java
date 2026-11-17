@@ -66,4 +66,8 @@ public class Servico {
     public int getDuracaoMinutos() {
         return duracaoMinutos;
     }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
 }

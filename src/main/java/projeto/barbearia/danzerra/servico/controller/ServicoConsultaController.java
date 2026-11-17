@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import projeto.barbearia.danzerra.servico.dto.ServicoResponse;
@@ -20,7 +21,7 @@ public class ServicoConsultaController {
     }
 
     @GetMapping
-    public List<ServicoResponse> listar() {
-        return servicos.listar();
+    public List<ServicoResponse> listar(@RequestParam(defaultValue = "false") boolean incluirInativos) {
+        return servicos.listar(incluirInativos);
     }
 }

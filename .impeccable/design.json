@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T00:03:20.302Z",
+  "title": "Design System: Danzerra",
+  "extensions": {
+    "breakpoints": [
+      {
+        "name": "painel-compacto",
+        "value": "880px"
+      },
+      {
+        "name": "navegacao-superior",
+        "value": "660px"
+      },
+      {
+        "name": "formulario-estreito",
+        "value": "360px"
+      }
+    ],
+    "motion": [
+      {
+        "name": "controle",
+        "value": "160ms",
+        "purpose": "Transição de cor em botões, com respeito à preferência por movimento reduzido."
+      }
+    ]
+  }
+}

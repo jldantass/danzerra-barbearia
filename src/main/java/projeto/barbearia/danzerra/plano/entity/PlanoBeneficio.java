@@ -33,6 +33,10 @@ public class PlanoBeneficio {
         return servico == null ? null : servico.getId();
     }
 
+    public Servico getServico() {
+        return servico;
+    }
+
     public String getServicoNome() {
         return servico == null ? nomePendente : servico.getNome();
     }
