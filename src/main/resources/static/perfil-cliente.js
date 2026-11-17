@@ -132,7 +132,8 @@ function listaAgendamentos(itens, atual) {
         const data = formatarData(item.inicio.slice(0, 10));
         const horario = elemento("time", `${data} às ${item.inicio.slice(11, 16)}`);
         horario.dateTime = item.inicio;
-        resumo.append(horario, elemento("span", item.servicos.map((servico) => servico.nome).join(" · "), "ajuda"));
+        resumo.append(horario, elemento("span", `Barbeiro · ${item.barbeiroNome}`, "ajuda"),
+            elemento("span", item.servicos.map((servico) => servico.nome).join(" · "), "ajuda"));
         botao.append(resumo, marcacaoAtendimento(item));
         linha.append(botao);
         lista.append(linha);

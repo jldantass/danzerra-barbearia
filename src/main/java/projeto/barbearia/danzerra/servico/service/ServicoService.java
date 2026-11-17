@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import projeto.barbearia.danzerra.plano.repository.PlanoRepository;
 import projeto.barbearia.danzerra.servico.dto.ServicoAtualizacaoRequest;
 import projeto.barbearia.danzerra.servico.dto.ServicoCadastroRequest;
 import projeto.barbearia.danzerra.servico.dto.ServicoResponse;
@@ -21,9 +22,11 @@ import projeto.barbearia.danzerra.servico.repository.ServicoRepository;
 public class ServicoService {
 
     private final ServicoRepository servicos;
+    private final PlanoRepository planos;
 
-    public ServicoService(ServicoRepository servicos) {
+    public ServicoService(ServicoRepository servicos, PlanoRepository planos) {
         this.servicos = servicos;
+        this.planos = planos;
     }
 
     @Transactional
@@ -57,7 +60,10 @@ public class ServicoService {
 
     @Transactional
     public void alternarAtivo(Long id) {
-        buscarServicoParaAlteracao(id).alternarAtivo();
+        planos.bloquearCatalogo();
+        Servico servico = buscarServicoParaAlteracao(id);
+        servico.alternarAtivo();
+        if (!servico.isAtivo()) planos.desativarPlanosComServico(id);
     }
 
     @Transactional

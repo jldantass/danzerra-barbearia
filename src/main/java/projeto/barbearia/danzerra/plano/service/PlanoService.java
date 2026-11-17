@@ -45,7 +45,7 @@ public class PlanoService {
 
     @Transactional(readOnly = true)
     public List<PlanoResponse> listar() {
-        return planos.findAllByExcluidoFalse(Sort.by("id")).stream()
+        return planos.findAllByExcluidoFalse(Sort.by("precoMensal", "id")).stream()
                 .map(PlanoMapper::paraResponse)
                 .toList();
     }
@@ -59,6 +59,7 @@ public class PlanoService {
 
     @Transactional
     public PlanoResponse atualizar(Long id, PlanoDadosRequest dados) {
+        planos.bloquearCatalogo();
         Plano plano = buscarParaAlteracao(id);
         plano.atualizarDados(dados.nome().strip(), dados.precoMensal());
 
@@ -74,6 +75,7 @@ public class PlanoService {
 
     @Transactional
     public PlanoResponse definirAtivo(Long id, boolean ativo) {
+        planos.bloquearCatalogo();
         Plano plano = buscarParaAlteracao(id);
         if (ativo) {
             validarPlanoCompleto(plano);
@@ -120,6 +122,10 @@ public class PlanoService {
         if (plano.getBeneficios().stream().anyMatch(beneficio -> beneficio.getServicoId() == null)) {
             throw new PlanoDadosInvalidosException(
                     "Vincule todos os benefícios a serviços do catálogo para manter o plano ativo.");
+        }
+        if (plano.getBeneficios().stream().anyMatch(beneficio -> !beneficio.temServicoAtivo())) {
+            throw new PlanoDadosInvalidosException(
+                    "Substitua ou reative os serviços inativos antes de ativar o plano.");
         }
     }
 }

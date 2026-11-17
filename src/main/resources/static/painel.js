@@ -1,13 +1,22 @@
 import { api, limparCsrf } from "./api-painel.js";
 import { abrirPerfilCliente, fecharPerfilCliente } from "./perfil-cliente.js";
-import { abrirAcaoOperacional, mostrarOperacao, fecharOperacao } from "./operacao.js";
+import { abrirPerfilBarbeiro, fecharPerfilBarbeiro } from "./perfil-barbeiro.js";
+import { abrirAcaoOperacional, mostrarOperacao, fecharOperacao, controlesRelatorio } from "./operacao.js";
 
 const porId = (id) => document.getElementById(id);
 const editor = porId("editor");
 const exclusao = porId("exclusao");
 const resultados = porId("resultados");
+const buscaPlano = porId("busca-plano");
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const clientesPorPagina = 20;
+const filtroDesempenho = {
+    dia: new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeZone: "America/Fortaleza" }).format(new Date()),
+    periodo: "MES",
+};
+let pedidoDesempenho = 0;
+let dadosDesempenho;
+let ordenarDesempenho = "agendamentos";
 
 const secoes = {
     hoje: { titulo: "Hoje", descricao: "A agenda do dia e o movimento do balcão.", novo: "Agendar atendimento", operacional: true },
@@ -18,6 +27,11 @@ const secoes = {
         titulo: "Clientes", descricao: "Cadastre e encontre quem passa pelo balcão.",
         registro: "Clientes cadastrados", novo: "Novo cliente", entidade: "cliente",
         colunas: ["Nome", "Celular", "Ações"],
+    },
+    barbeiros: {
+        titulo: "Barbeiros", descricao: "Cadastre os profissionais e gerencie quem recebe novos agendamentos.",
+        registro: "Barbeiros cadastrados", novo: "Novo barbeiro", entidade: "barbeiro",
+        colunas: ["Nome", "Celular", "Status", "Ações"],
     },
     servicos: {
         titulo: "Serviços", descricao: "Gerencie os serviços, os preços e a duração dos atendimentos.",
@@ -74,6 +88,7 @@ function mostrarLogin(texto = "") {
     clearTimeout(atrasoBusca);
     limparCsrf();
     fecharPerfilCliente();
+    fecharPerfilBarbeiro();
     fecharOperacao();
     for (const dialogo of [editor, exclusao]) {
         if (dialogo.open) dialogo.close();
@@ -113,6 +128,7 @@ async function mostrarPainel(conta) {
     pagina = 0;
     busca = "";
     porId("busca-texto").value = "";
+    buscaPlano.value = "";
     trocarSecao("hoje");
 }
 
@@ -137,6 +153,7 @@ async function acaoComBotao(node, acao) {
 function trocarSecao(novaSecao, moverFoco = false) {
     clearTimeout(atrasoBusca);
     secao = novaSecao;
+    porId("painel").dataset.secaoAtual = secao;
     const dados = secoes[secao];
     porId("secao-titulo").textContent = dados.titulo;
     porId("secao-descricao").textContent = dados.descricao;
@@ -145,7 +162,12 @@ function trocarSecao(novaSecao, moverFoco = false) {
     porId("novo").hidden = !dados.novo;
     porId("lista-catalogo").hidden = Boolean(dados.operacional);
     porId("operacao").hidden = !dados.operacional;
+    porId("hoje-resumos").hidden = secao !== "hoje";
+    porId("financeiro-filtros").hidden = secao !== "financeiro";
+    if (secao !== "financeiro") porId("financeiro-filtros").replaceChildren();
     porId("busca-clientes").hidden = secao !== "clientes";
+    porId("desempenho-barbeiros").hidden = secao !== "barbeiros";
+    if (secao === "barbeiros") prepararDesempenho();
     mensagem("painel-aviso");
 
     for (const item of document.querySelectorAll("[data-secao]")) {
@@ -155,7 +177,7 @@ function trocarSecao(novaSecao, moverFoco = false) {
     if (moverFoco) porId("secao-titulo").focus();
     if (dados.operacional) {
         requisicaoLista++;
-        return mostrarOperacao(secao, mostrarLogin, mensagem);
+        return mostrarOperacao(secao, mostrarLogin, mensagem, (cliente) => abrirPerfilCliente(cliente, mostrarLogin));
     }
     return carregarLista();
 }
@@ -164,9 +186,10 @@ function consultaLista(chave) {
     if (chave === "clientes") {
         const filtro = /^[+\d\s().-]+$/.test(busca) ? "celular" : "nome";
         const params = new URLSearchParams({ pagina, tamanho: clientesPorPagina, [filtro]: busca });
+        if (buscaPlano.value) params.set("planoAtivo", buscaPlano.value);
         return api(`/clientes?${params}`);
     }
-    return api(chave === "servicos" ? "/servicos?incluirInativos=true" : "/planos");
+    return api(chave === "planos" ? "/planos" : `/${chave}?incluirInativos=true`);
 }
 
 async function carregarLista() {
@@ -190,6 +213,7 @@ async function carregarLista() {
             renderizarPaginacao(resposta);
         } else {
             renderizarLista(chave, resposta, resposta.length);
+            if (chave === "barbeiros") await carregarDesempenho();
         }
     } catch (erro) {
         if (pedido !== requisicaoLista) return;
@@ -198,6 +222,89 @@ async function carregarLista() {
             botao("Tentar novamente", carregarLista, "secundario")));
     } finally {
         if (pedido === requisicaoLista) resultados.setAttribute("aria-busy", "false");
+    }
+}
+
+function prepararDesempenho() {
+    const filtros = porId("desempenho-filtros");
+    if (filtros.childElementCount) return;
+    const periodo = controlesRelatorio(filtroDesempenho, carregarDesempenho);
+    periodo.id = "barbeiros-relatorio-filtros";
+    const ordenacao = elemento("select");
+    ordenacao.id = "desempenho-ordem";
+    const rotulo = elemento("label", "Ordenar desempenho", "sr-only");
+    rotulo.htmlFor = ordenacao.id;
+    ordenacao.add(new Option("Mais agendamentos", "agendamentos"));
+    ordenacao.add(new Option("Mais atendimentos concluídos", "concluidos"));
+    ordenacao.value = ordenarDesempenho;
+    ordenacao.addEventListener("change", () => {
+        ordenarDesempenho = ordenacao.value;
+        if (dadosDesempenho) renderizarDesempenho();
+    });
+    filtros.append(periodo, rotulo, ordenacao);
+}
+
+async function carregarDesempenho() {
+    const pedido = ++pedidoDesempenho;
+    const resultado = porId("desempenho-resultados");
+    resultado.setAttribute("aria-busy", "true");
+    dadosDesempenho = undefined;
+    resultado.replaceChildren(estadoLista("Carregando desempenho…"));
+    try {
+        const dados = await api(`/barbeiros/desempenho?${new URLSearchParams(filtroDesempenho)}`);
+        if (pedido !== pedidoDesempenho || secao !== "barbeiros") return;
+        dadosDesempenho = dados;
+        renderizarDesempenho();
+    } catch (erro) {
+        if (pedido !== pedidoDesempenho || secao !== "barbeiros") return;
+        if (erro.status === 401) return mostrarLogin(erro.message);
+        resultado.replaceChildren(estadoLista("Não foi possível carregar o desempenho", erro.message,
+            botao("Tentar novamente", carregarDesempenho, "secundario")));
+    } finally {
+        if (pedido === pedidoDesempenho) resultado.setAttribute("aria-busy", "false");
+    }
+}
+
+function renderizarDesempenho() {
+    const { inicio, fim, barbeiros } = dadosDesempenho;
+    const data = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" });
+    const formatar = (dia) => data.format(new Date(`${dia}T00:00:00Z`));
+    const intervalo = elemento("p", inicio === fim ? formatar(inicio) : `${formatar(inicio)} a ${formatar(fim)}`,
+        "desempenho-nota");
+    const nota = elemento("p",
+        "Agendamentos pela data marcada, sem cancelados. Concluídos pela data da conclusão.", "desempenho-nota");
+    const area = elemento("div", undefined, "tabela-area");
+    area.tabIndex = 0;
+    area.setAttribute("role", "region");
+    area.setAttribute("aria-label", "Classificação dos barbeiros");
+    const tabela = elemento("table");
+    const cabecalho = tabela.createTHead().insertRow();
+    const colunas = [["Barbeiro", "nome"], ["Agendamentos", "agendamentos"], ["Concluídos", "concluidos"]];
+    for (const [nome, campo] of colunas) {
+        const th = elemento("th", nome);
+        th.scope = "col";
+        if (campo === ordenarDesempenho) th.setAttribute("aria-sort", "descending");
+        cabecalho.append(th);
+    }
+    const ordem = [...barbeiros].sort((a, b) =>
+        b[ordenarDesempenho] - a[ordenarDesempenho] || a.nome.localeCompare(b.nome, "pt-BR") || a.id - b.id);
+    const corpo = tabela.createTBody();
+    for (const barbeiro of ordem) {
+        const linha = corpo.insertRow();
+        for (const [nome, campo] of colunas) {
+            const td = linha.insertCell();
+            td.dataset.coluna = nome;
+            td.textContent = campo === "nome" ? barbeiro.nome + (barbeiro.ativo ? "" : " (inativo)") : barbeiro[campo];
+            td.className = campo === "nome" ? "nome-registro" : "numero";
+        }
+    }
+    area.append(tabela);
+    const resultado = porId("desempenho-resultados");
+    resultado.replaceChildren(intervalo, nota);
+    if (!barbeiros.length) {
+        resultado.append(estadoLista("Cadastre um barbeiro para acompanhar seu desempenho."));
+    } else {
+        resultado.append(area);
     }
 }
 
@@ -222,12 +329,18 @@ function renderizarLista(chave, itens, total) {
     const info = secoes[chave];
     porId("quantidade").textContent = `${total} ${total === 1 ? "registro" : "registros"}`;
     if (!itens.length) {
-        const temBusca = chave === "clientes" && busca !== "";
+        const temFiltroPlano = chave === "clientes" && buscaPlano.value !== "";
+        const temBusca = chave === "clientes" && (busca !== "" || temFiltroPlano);
         const titulo = temBusca ? "Nenhum cliente encontrado" : "Nenhum registro cadastrado";
         const acao = temBusca
-            ? botao("Limpar busca", limparBusca, "secundario")
+            ? botao("Limpar filtros", () => {
+                buscaPlano.value = "";
+                limparBusca();
+            }, "secundario")
             : botao(info.novo, () => abrirEditor(chave), "secundario");
-        resultados.replaceChildren(estadoLista(titulo, temBusca ? "Tente outro nome ou celular." : "", acao));
+        const descricao = temFiltroPlano ? "Nenhum cliente com plano ativo corresponde aos filtros."
+            : temBusca ? "Tente outro nome ou celular." : "";
+        resultados.replaceChildren(estadoLista(titulo, descricao, acao));
         return;
     }
 
@@ -274,14 +387,19 @@ function preco(valor) {
 }
 
 function renderizarLinha(linha, chave, item) {
-    const nome = chave === "clientes"
-        ? botao(item.nome, () => abrirPerfilCliente(item, mostrarLogin), "nome-cliente", `Abrir perfil de ${item.nome}`)
-        : item.nome;
+    let nome = item.nome;
+    if (chave === "clientes" || chave === "barbeiros") {
+        const abrirPerfil = chave === "clientes" ? abrirPerfilCliente : abrirPerfilBarbeiro;
+        nome = botao(item.nome, () => abrirPerfil(item, mostrarLogin), "nome-cliente", `Abrir perfil de ${item.nome}`);
+    }
     celula(linha, nome, "nome-registro");
 
     let planoIncompleto = false;
     if (chave === "clientes") {
         celula(linha, item.celular, "numero");
+    } else if (chave === "barbeiros") {
+        celula(linha, item.celular || "Não informado", "numero");
+        celula(linha, item.ativo ? estado("Ativo", "estado-ativo") : estado("Inativo"));
     } else if (chave === "servicos") {
         celula(linha, preco(item.precoAvulso), "numero");
         celula(linha, `${item.duracaoMinutos} min`, "numero");
@@ -290,17 +408,21 @@ function renderizarLinha(linha, chave, item) {
         const pendencias = [];
         if (item.precoMensal === null) pendencias.push("Defina a mensalidade.");
         if (item.beneficios.some((b) => b.servicoId === null)) pendencias.push("Vincule os serviços.");
+        const inativos = item.beneficios.filter((b) => b.servicoId !== null && b.servicoAtivo === false);
+        if (inativos.length) pendencias.push("Substitua ou reative os serviços inativos.");
         planoIncompleto = pendencias.length > 0;
         celula(linha, preco(item.precoMensal), "numero");
         const lista = elemento("ul", undefined, "beneficios");
         for (const entrada of item.beneficios) {
             const rotulo = `${entrada.quantidade} × ${entrada.servicoNome}`;
-            lista.append(elemento("li", entrada.servicoId === null ? `${rotulo} (pendente)` : rotulo));
+            const situacao = entrada.servicoId === null ? " (pendente)" : entrada.servicoAtivo === false ? " (inativo)" : "";
+            lista.append(elemento("li", rotulo + situacao));
         }
         celula(linha, lista);
         const status = elemento("div");
         status.append(item.ativo ? estado("Ativo", "estado-ativo")
-            : planoIncompleto ? estado("Incompleto", "estado-pendente") : estado("Inativo"));
+            : inativos.length ? estado("Inativo", "estado-pendente")
+                : planoIncompleto ? estado("Incompleto", "estado-pendente") : estado("Inativo"));
         if (planoIncompleto && !item.ativo) {
             status.append(elemento("p", pendencias.join(" "), "estado-detalhe"));
         }
@@ -448,6 +570,7 @@ async function abrirEditor(chave, itemInicial) {
     caixa.replaceChildren(elemento("p", "Carregando formulário…", "ajuda"));
     porId("editor-titulo").textContent = {
         clientes: itemInicial ? "Editar cliente" : "Novo cliente",
+        barbeiros: itemInicial ? "Editar barbeiro" : "Novo barbeiro",
         servicos: itemInicial ? "Editar serviço" : "Novo serviço",
         planos: itemInicial ? "Editar plano" : "Novo plano",
         administrador: "Novo administrador",
@@ -469,6 +592,8 @@ async function abrirEditor(chave, itemInicial) {
             ]);
         } else if (chave === "clientes" && itemInicial) {
             item = await api(`/clientes/${itemInicial.id}`);
+        } else if (chave === "barbeiros" && itemInicial) {
+            item = await api(`/barbeiros/${itemInicial.id}`);
         } else if (chave === "barbearia") {
             item = await api("/barbearia");
         }
@@ -485,8 +610,9 @@ async function abrirEditor(chave, itemInicial) {
             caixa.append(campo(rotulo, "nome", { required: true, maxLength: 120 }, item?.nome));
         }
 
-        if (chave === "clientes") {
-            caixa.append(campo("Celular", "celular", { type: "tel", required: true, autoComplete: "tel" }, item?.celular));
+        if (chave === "clientes" || chave === "barbeiros") {
+            caixa.append(campo(chave === "barbeiros" ? "Celular (opcional)" : "Celular", "celular",
+                { type: "tel", required: chave === "clientes", maxLength: 30, autoComplete: "tel" }, item?.celular));
         } else if (chave === "servicos") {
             caixa.append(campo("Preço avulso (R$)", "precoAvulso",
                 { type: "number", required: true, min: "0", max: "99999999.99", step: ".01" }, item?.precoAvulso));
@@ -510,7 +636,7 @@ function dadosEditor(form, contexto) {
     const campos = new FormData(form);
     if (chave === "administrador") return { login: campos.get("login"), senha: campos.get("senha") };
     const dados = { nome: campos.get("nome") };
-    if (chave === "clientes") dados.celular = campos.get("celular");
+    if (chave === "clientes" || chave === "barbeiros") dados.celular = campos.get("celular");
     if (chave === "servicos") {
         dados.precoAvulso = Number(campos.get("precoAvulso"));
         dados.duracaoMinutos = Number(campos.get("duracaoMinutos"));
@@ -546,6 +672,24 @@ function dialogoOcupado(dialogo, ocupado) {
 for (const dialogo of [editor, exclusao]) {
     dialogo.addEventListener("cancel", (evento) => {
         if (dialogo.getAttribute("aria-busy") === "true") evento.preventDefault();
+    });
+}
+
+for (const dialogo of document.querySelectorAll(".dialogo")) {
+    let comecouFora = false;
+    function clicouFora(evento) {
+        if (evento.target !== dialogo) return false;
+        const { left, right, top, bottom } = dialogo.getBoundingClientRect();
+        return evento.clientX < left || evento.clientX >= right
+            || evento.clientY < top || evento.clientY >= bottom;
+    }
+    dialogo.addEventListener("pointerdown", (evento) => {
+        comecouFora = clicouFora(evento);
+    });
+    dialogo.addEventListener("click", (evento) => {
+        const fechar = comecouFora && clicouFora(evento);
+        comecouFora = false;
+        if (fechar && dialogo.dispatchEvent(new Event("cancel", { cancelable: true }))) dialogo.close();
     });
 }
 
@@ -654,6 +798,11 @@ porId("busca-texto").addEventListener("input", (evento) => {
 });
 porId("anterior").addEventListener("click", () => {
     pagina--;
+    carregarLista();
+});
+buscaPlano.addEventListener("change", () => {
+    clearTimeout(atrasoBusca);
+    pagina = 0;
     carregarLista();
 });
 porId("proxima").addEventListener("click", () => {

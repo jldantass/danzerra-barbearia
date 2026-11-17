@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
-import projeto.barbearia.danzerra.cliente.controller.ClienteCadastroController;
+import projeto.barbearia.danzerra.cliente.controller.ClienteController;
 
-@RestControllerAdvice(basePackageClasses = ClienteCadastroController.class)
+@RestControllerAdvice(basePackageClasses = ClienteController.class)
 public class ClienteErros {
 
     @ExceptionHandler(ClienteDadosInvalidosException.class)

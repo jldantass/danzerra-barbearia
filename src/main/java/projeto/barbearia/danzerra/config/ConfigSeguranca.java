@@ -24,7 +24,7 @@ public class ConfigSeguranca {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/", "/index.html",
                                 "/painel.css", "/painel.js", "/api-painel.js", "/perfil-cliente.js",
-                                "/operacao.js", "/login-barbearia.webp").permitAll()
+                                "/operacao.js", "/perfil-barbeiro.js", "/login-barbearia.webp").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .anyRequest().hasRole("ADMIN"))

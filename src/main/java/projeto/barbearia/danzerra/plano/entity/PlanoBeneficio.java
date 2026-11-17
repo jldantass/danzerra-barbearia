@@ -37,6 +37,10 @@ public class PlanoBeneficio {
         return servico;
     }
 
+    public boolean temServicoAtivo() {
+        return servico != null && servico.isAtivo();
+    }
+
     public String getServicoNome() {
         return servico == null ? nomePendente : servico.getNome();
     }

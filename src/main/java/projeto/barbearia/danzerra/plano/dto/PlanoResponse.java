@@ -6,6 +6,6 @@ import java.util.List;
 public record PlanoResponse(
         Long id, String nome, BigDecimal precoMensal, boolean ativo, List<Beneficio> beneficios) {
 
-    public record Beneficio(Long servicoId, String servicoNome, int quantidade) {
+    public record Beneficio(Long servicoId, String servicoNome, int quantidade, boolean servicoAtivo) {
     }
 }

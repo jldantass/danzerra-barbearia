@@ -6,12 +6,15 @@ const dialogo = el("operacao-dialogo");
 const detalhesAtendimento = el("atendimento-detalhes");
 const campos = el("operacao-campos");
 const confirmar = el("operacao-confirmar");
+const cancelarOperacao = el("operacao-cancelar");
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const datas = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
 const meses = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
-const diasUteis = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const datasPlanner = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const diasPlanner = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "UTC" });
+const diasGrafico = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC",
+});
 const fuso = "America/Fortaleza";
 const dataIso = new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeZone: fuso });
 const horaIso = new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: fuso });
@@ -20,13 +23,17 @@ const statusTexto = { AGENDADO: "Agendado", CONCLUIDO: "Concluído", CANCELADO: 
 let secao;
 let aoExpirar;
 let informar;
+let abrirFicha;
 let sequencia = 0;
 let consultaDetalhes = 0;
 let edicao;
 let diaAgenda = hoje();
 let dataRenderizadaAgenda;
-let diaRelatorio = hoje();
-let periodoRelatorio = "SEMANA";
+let barbeiroFiltrado = "";
+const filtrosRelatorio = {
+    atendimentos: { dia: hoje(), periodo: "SEMANA" },
+    financeiro: { dia: hoje(), periodo: "SEMANA" },
+};
 
 function hoje() {
     return dataIso.format(new Date());
@@ -106,21 +113,38 @@ function controlesAgenda() {
     const periodo = elem("h2", undefined, "planner-periodo");
     periodo.id = "agenda-periodo";
     const navegacao = elem("div", undefined, "filtros-operacao planner-navegacao");
+    const controles = elem("div", undefined, "planner-controles");
     const mover = (dias) => { diaAgenda = deslocarDia(diaAgenda, dias); carregar(); };
     const data = dataCampo(diaAgenda, (dia) => { diaAgenda = dia; carregar(); });
     data.id = "agenda-data-referencia";
     data.setAttribute("aria-label", "Escolher data de referência da semana");
     navegacao.append(
-        botao("Semana anterior", () => mover(-7), "secundario"),
+        botao("Semana anterior", () => mover(-7), "primario"),
         data,
-        botao("Próxima semana", () => mover(7), "secundario"),
-        botao("Esta semana", () => { diaAgenda = hoje(); carregar(); }, "discreto"),
+        botao("Próxima semana", () => mover(7), "primario"),
+        botao("Esta semana", () => { diaAgenda = hoje(); carregar(); }, "primario semana-atual"),
     );
-    barra.append(periodo, navegacao);
+    controles.append(navegacao);
+    barra.append(periodo, controles);
     return barra;
 }
 
-function controlesRelatorio() {
+function filtroDeBarbeiro(barbeiros) {
+    const seletor = elem("select");
+    seletor.id = "agenda-barbeiro-filtro";
+    seletor.add(new Option("Todos os barbeiros", ""));
+    for (const barbeiro of barbeiros) {
+        seletor.add(new Option(barbeiro.nome + (barbeiro.ativo ? "" : " (inativo)"), barbeiro.id));
+    }
+    seletor.value = barbeiroFiltrado;
+    seletor.addEventListener("change", () => {
+        barbeiroFiltrado = seletor.value;
+        carregar();
+    });
+    return rotular("Barbeiro da agenda", seletor);
+}
+
+export function controlesRelatorio(filtro, aoMudar = carregar) {
     const controles = elem("div", undefined, "filtros-operacao");
     controles.id = "relatorio-filtros";
     const tipo = elem("select");
@@ -128,11 +152,11 @@ function controlesRelatorio() {
     for (const [valor, nome] of [["DIA", "Dia"], ["SEMANA", "Semana"], ["MES", "Mês"]]) {
         tipo.add(new Option(nome, valor));
     }
-    tipo.value = periodoRelatorio;
+    tipo.value = filtro.periodo;
     const referencia = elem("div");
     function renderizarReferencia() {
-        if (periodoRelatorio !== "MES") {
-            referencia.replaceChildren(dataCampo(diaRelatorio, (dia) => { diaRelatorio = dia; carregar(); }));
+        if (filtro.periodo !== "MES") {
+            referencia.replaceChildren(dataCampo(filtro.dia, (dia) => { filtro.dia = dia; aoMudar(); }));
             return;
         }
         const grupo = elem("div", undefined, "filtro-mes");
@@ -142,15 +166,15 @@ function controlesRelatorio() {
             const nome = meses.format(new Date(Date.UTC(2000, indice, 1)));
             mes.add(new Option(nome[0].toUpperCase() + nome.slice(1), String(indice + 1).padStart(2, "0")));
         }
-        const ano = entrada("ano", "number", diaRelatorio.slice(0, 4));
+        const ano = entrada("ano", "number", filtro.dia.slice(0, 4));
         ano.min = "1";
         ano.max = "9999";
         ano.setAttribute("aria-label", "Ano do relatório");
-        mes.value = diaRelatorio.slice(5, 7);
+        mes.value = filtro.dia.slice(5, 7);
         function selecionarMes() {
-            if (!ano.validity.valid) ano.value = diaRelatorio.slice(0, 4);
-            diaRelatorio = `${String(ano.valueAsNumber).padStart(4, "0")}-${mes.value}-01`;
-            carregar();
+            if (!ano.validity.valid) ano.value = filtro.dia.slice(0, 4);
+            filtro.dia = `${String(ano.valueAsNumber).padStart(4, "0")}-${mes.value}-01`;
+            aoMudar();
         }
         mes.addEventListener("change", selecionarMes);
         ano.addEventListener("change", selecionarMes);
@@ -158,9 +182,9 @@ function controlesRelatorio() {
         referencia.replaceChildren(grupo);
     }
     tipo.addEventListener("change", () => {
-        periodoRelatorio = tipo.value;
+        filtro.periodo = tipo.value;
         renderizarReferencia();
-        carregar();
+        aoMudar();
     });
     renderizarReferencia();
     controles.append(referencia, tipo);
@@ -177,16 +201,15 @@ export function marcacaoAtendimento(item) {
 
 function acoesDoAtendimento(item) {
     const situacao = elem("div", undefined, "situacao-agenda");
-    situacao.append(marcacaoAtendimento(item));
     if (item.status === "AGENDADO") {
         const comecou = item.inicio.slice(0, 16) <= `${hoje()}T${horaIso.format(new Date())}`;
         if (comecou) {
-            situacao.append(botao("Concluir", () => confirmarSituacao(item, "CONCLUIDO"), "secundario"),
-                botao("Marcar falta", () => confirmarSituacao(item, "FALTOU")));
+            situacao.append(botao("Concluir", () => confirmarSituacao(item, "CONCLUIDO"), "concluir"),
+                botao("Marcar falta", () => confirmarSituacao(item, "FALTOU"), "marcar-falta"));
         } else {
             situacao.append(botao("Remarcar", () => abrirAgenda(item), "secundario"));
         }
-        situacao.append(botao("Cancelar", () => confirmarSituacao(item, "CANCELADO"), "discreto apagar"));
+        situacao.append(botao("Cancelar", () => confirmarSituacao(item, "CANCELADO"), "cancelar"));
     }
     return situacao;
 }
@@ -195,6 +218,7 @@ function botaoDoAtendimento(item, classe, sufixo = "") {
     const id = `agenda-atendimento-${item.id}${sufixo}`;
     const bloco = botao(undefined, () => mostrarDetalhesAtendimento(item, { idBotao: id }), classe);
     bloco.id = id;
+    bloco.dataset.status = item.status;
     bloco.setAttribute("aria-haspopup", "dialog");
     return bloco;
 }
@@ -203,14 +227,24 @@ function blocoDoPlanner(item, mostrarSituacao = false) {
     const li = elem("li");
     const bloco = botaoDoAtendimento(item, "bloco-planner");
     const horario = elem("span", undefined, "horario-planner");
+    const intervalo = elem("span", undefined, "intervalo-planner");
     const inicio = elem("time", item.inicio.slice(11, 16));
+    const fim = elem("time", item.fim.slice(11, 16));
     inicio.dateTime = item.inicio;
-    horario.append(inicio, elem("span", `${duracaoAtendimento(item)} min`));
+    fim.dateTime = item.fim;
+    intervalo.append(inicio, "–", fim);
+    const duracao = `${duracaoAtendimento(item)} min`;
+    horario.append(intervalo, elem("span", duracao, "duracao-planner"));
     const cliente = elem("strong", item.clienteNome, "cliente-planner");
     const ficha = elem("span", undefined, "cliente-planner-ficha");
     ficha.append(cliente);
     if (mostrarSituacao) ficha.append(marcacaoAtendimento(item));
-    bloco.append(horario, ficha);
+    if (item.status === "CONCLUIDO" || item.status === "FALTOU") {
+        if (!mostrarSituacao) {
+            bloco.setAttribute("aria-label", `${inicio.textContent} a ${fim.textContent}, ${duracao}, ${item.clienteNome}, ${statusTexto[item.status]}`);
+        }
+    }
+    bloco.append(horario, ficha, elem("span", item.barbeiroNome, "barbeiro-planner"));
     li.append(bloco);
     return li;
 }
@@ -232,12 +266,12 @@ function saldoDoAtendimento(plano, cobertos, previsto) {
         beneficios.append(linha);
     }
     saldo.append(topo, beneficios);
-    if (previsto) saldo.append(elem("p", "O desconto é aplicado na conclusão.", "ajuda"));
+    if (previsto) saldo.append(elem("p", "Previsão pela ordem dos horários. O desconto é aplicado na conclusão.", "ajuda"));
     return saldo;
 }
 
-function renderizarDetalhesAtendimento(item, plano, aviso = "") {
-    el("atendimento-titulo").textContent = item.clienteNome;
+function renderizarDetalhesAtendimento(item, plano, previsao, aviso = "") {
+    el("atendimento-cliente").textContent = item.clienteNome;
     const data = new Date(`${item.inicio.slice(0, 10)}T00:00:00Z`);
     const resumo = estatisticas([
         ["Data", datasPlanner.format(data)],
@@ -248,17 +282,16 @@ function renderizarDetalhesAtendimento(item, plano, aviso = "") {
     const servicos = elem("section", undefined, "atendimento-servicos");
     const lista = elem("ul");
     const agendado = item.status === "AGENDADO";
-    const disponiveis = new Set(plano?.beneficios.filter((beneficio) => beneficio.restantes > 0)
-        .map((beneficio) => beneficio.servicoId));
+    const cobertosNaPrevisao = new Set(previsao?.servicosPeloPlano);
     const cobertos = new Set();
     for (const servico of item.servicos) {
         const linha = elem("li");
         const descricao = elem("div");
         descricao.append(elem("strong", servico.nome), elem("span", `${servico.duracaoMinutos} min`, "ajuda"));
-        const previsto = agendado && disponiveis.has(servico.servicoId);
+        const previsto = cobertosNaPrevisao.has(servico.servicoId);
         const peloPlano = servico.cobertoPorPlano || previsto;
         const preco = brl.format(servico.valorCobrado ?? servico.precoAvulso);
-        const avulso = aviso && agendado ? `Preço avulso ${preco}` : `${preco} avulso`;
+        const avulso = agendado ? (previsao ? `Previsto avulso · ${preco}` : `Preço avulso ${preco}`) : `${preco} avulso`;
         const valor = peloPlano ? (previsto ? "Previsto pelo plano" : "Pelo plano") : avulso;
         if (peloPlano) cobertos.add(servico.servicoId);
         linha.append(descricao, elem("span", valor, peloPlano ? "cobertura-agenda" : undefined));
@@ -268,8 +301,11 @@ function renderizarDetalhesAtendimento(item, plano, aviso = "") {
     if (item.status === "CONCLUIDO") {
         const total = item.servicos.reduce((soma, servico) => soma + servico.valorCobrado, 0);
         servicos.append(elem("p", `Total avulso ${brl.format(total)}`, "atendimento-total"));
+    } else if (previsao) {
+        servicos.append(elem("p", `Total avulso previsto ${brl.format(previsao.valorAvulso)}`, "atendimento-total"));
     }
-    el("atendimento-dados").replaceChildren(resumo, servicos);
+    el("atendimento-dados").replaceChildren(resumo,
+        elem("p", `Barbeiro · ${item.barbeiroNome}`, "ajuda"), servicos);
     if (plano && cobertos.size) el("atendimento-dados").append(saldoDoAtendimento(plano, cobertos, agendado));
     if (aviso) {
         const mensagem = elem("p", aviso, "ajuda");
@@ -281,25 +317,33 @@ function renderizarDetalhesAtendimento(item, plano, aviso = "") {
 export async function mostrarDetalhesAtendimento(item, { idBotao = "", consulta = false, aoExpirarSessao = aoExpirar } = {}) {
     const pedido = ++consultaDetalhes;
     const atual = () => detalhesAtendimento.open && pedido === consultaDetalhes;
-    renderizarDetalhesAtendimento(item, null, "Consultando a cobertura do plano…");
+    renderizarDetalhesAtendimento(item, null, null, "Consultando a cobertura do plano…");
+    el("atendimento-cliente").onclick = () => {
+        detalhesAtendimento.close();
+        if (!consulta) abrirFicha({ id: item.clienteId, nome: item.clienteNome, celular: "" });
+    };
     const acoes = el("atendimento-acoes");
-    const mostrarAcoes = (atendimento) =>
-        acoes.replaceChildren(consulta ? marcacaoAtendimento(atendimento) : acoesDoAtendimento(atendimento));
-    mostrarAcoes(item);
+    function mostrarSituacao(atendimento) {
+        el("atendimento-situacao").replaceChildren(marcacaoAtendimento(atendimento));
+        acoes.hidden = consulta || atendimento.status !== "AGENDADO";
+        acoes.replaceChildren();
+        if (!acoes.hidden) acoes.append(acoesDoAtendimento(atendimento));
+    }
+    mostrarSituacao(item);
     detalhesAtendimento.dataset.id = item.id;
     detalhesAtendimento.dataset.idBotao = idBotao;
     detalhesAtendimento.showModal();
     try {
-        const { atendimento, plano } = await api(`/agendamentos/${item.id}`);
+        const { atendimento, plano, previsao } = await api(`/agendamentos/${item.id}`);
         if (!atual()) return;
-        renderizarDetalhesAtendimento(atendimento, plano);
+        renderizarDetalhesAtendimento(atendimento, plano, previsao);
         if (atendimento.status !== item.status || atendimento.inicio !== item.inicio) {
-            mostrarAcoes(atendimento);
+            mostrarSituacao(atendimento);
         }
     } catch (falha) {
         if (!atual()) return;
         if (falha.status === 401) aoExpirarSessao(falha.message);
-        else renderizarDetalhesAtendimento(item, null, "Não foi possível consultar a cobertura do plano.");
+        else renderizarDetalhesAtendimento(item, null, null, "Não foi possível consultar a cobertura do plano.");
     }
 }
 
@@ -314,32 +358,41 @@ function rotularHorariosLivres(planner) {
     }
 }
 
-function agendaDoDia(dia, faixas, atendimentos) {
-    const planner = elem("div", undefined, "planner-hoje");
-    planner.dataset.dia = dia;
+function plannerDoBarbeiro(dia, faixas, atendimentos, ativo) {
+    const planner = elem("div", undefined, "horarios-barbeiro");
     const porId = new Map(atendimentos.map((item) => [item.id, item]));
+    const faltasVisiveis = new Set();
     for (const faixa of faixas) {
         const bloco = elem("section", undefined, "faixa-hoje");
         const inicioFaixa = faixa.inicio.slice(0, 5);
         const topo = elem("header", undefined, "faixa-hoje-topo");
-        topo.append(elem("h3", inicioFaixa < "12:00" ? "Manhã" : "Tarde"),
+        topo.append(elem("h4", inicioFaixa < "12:00" ? "Manhã" : "Tarde"),
             elem("span", `${inicioFaixa}–${faixa.fim.slice(0, 5)}`));
         const lista = elem("ol", undefined, "horarios-hoje");
         for (const horario of faixa.horarios) {
             const hora = horario.hora.slice(0, 5);
-            const item = porId.get(horario.atendimentoId);
+            const itens = [...horario.atendimentoIds, ...horario.faltasIds]
+                .map((id) => porId.get(id)).filter(Boolean);
             const linha = elem("li");
             const inicio = elem("time", hora);
             inicio.dateTime = `${dia}T${hora}`;
-            if (item) {
+            for (const item of itens) {
                 const sufixo = item.inicio.slice(11, 16) === hora ? "" : `-${hora.replace(":", "")}`;
                 const botaoOcupado = botaoDoAtendimento(item, "horario-hoje ocupado-hoje", sufixo);
-                botaoOcupado.append(inicio, elem("strong", item.clienteNome));
+                const cliente = elem("span", undefined, "horario-hoje-cliente");
+                cliente.append(elem("strong", item.clienteNome));
+                if (item.status === "FALTOU") {
+                    faltasVisiveis.add(item.id);
+                    cliente.append(elem("small", "(falta)"));
+                }
+                botaoOcupado.append(inicio.cloneNode(true), cliente);
                 linha.append(botaoOcupado);
-            } else {
+            }
+            if (!itens.length) {
                 const livre = elem("div", undefined, "horario-hoje");
                 const rotulo = elem("span");
-                rotulo.dataset.horarioLivre = hora;
+                if (ativo) rotulo.dataset.horarioLivre = hora;
+                else rotulo.textContent = "Indisponível";
                 livre.append(inicio, rotulo);
                 linha.append(livre);
             }
@@ -349,34 +402,77 @@ function agendaDoDia(dia, faixas, atendimentos) {
         planner.append(bloco);
     }
     if (!faixas.length) planner.append(elem("p", "Sem expediente hoje.", "ajuda"));
-    const historico = atendimentos.filter((item) => item.status === "CANCELADO" || item.status === "FALTOU");
+    const historico = atendimentos.filter((item) => item.status === "CANCELADO"
+        || (item.status === "FALTOU" && !faltasVisiveis.has(item.id)));
     if (historico.length) {
         const detalhes = elem("details", undefined, "historico-hoje");
         const lista = elem("ul", undefined, "planner-horarios");
         for (const item of historico) lista.append(blocoDoPlanner(item, true));
-        detalhes.append(elem("summary", `Cancelados e faltas (${historico.length})`), lista);
+        const resumo = historico.some((item) => item.status === "FALTOU") ? "Cancelados e faltas" : "Cancelados";
+        detalhes.append(elem("summary", `${resumo} (${historico.length})`), lista);
         planner.append(detalhes);
     }
-    rotularHorariosLivres(planner);
-    return painel("Agenda do dia", planner);
+    return planner;
 }
 
-function apresentarHoje(dia, agenda, resumo) {
-    const colunas = elem("div", undefined, "caderno-hoje");
+function agendaDoDia(dia, faixas, atendimentos, barbeiros) {
+    const planner = elem("div", undefined, "planner-hoje agendas-barbeiros");
+    planner.dataset.dia = dia;
+    const porBarbeiro = new Map();
+    for (const item of atendimentos) {
+        if (!porBarbeiro.has(item.barbeiroId)) porBarbeiro.set(item.barbeiroId, []);
+        porBarbeiro.get(item.barbeiroId).push(item);
+    }
+    const profissionais = barbeiros.filter((barbeiro) => barbeiroFiltrado
+        ? String(barbeiro.id) === barbeiroFiltrado : barbeiro.ativo || porBarbeiro.has(barbeiro.id));
+    planner.style.setProperty("--barbeiros-visiveis", Math.max(1, profissionais.length));
+    for (const barbeiro of profissionais) {
+        const secao = elem("section", undefined, "agenda-barbeiro-hoje");
+        secao.dataset.barbeiroId = barbeiro.id;
+        const titulo = elem("h3", barbeiro.nome);
+        titulo.id = `agenda-barbeiro-titulo-${barbeiro.id}`;
+        secao.setAttribute("aria-labelledby", titulo.id);
+        const topo = elem("header", undefined, "agenda-barbeiro-topo");
+        topo.append(titulo);
+        if (!barbeiro.ativo) topo.append(elem("span", "Inativo", "estado"));
+        secao.append(topo, plannerDoBarbeiro(dia, faixas, porBarbeiro.get(barbeiro.id) ?? [], barbeiro.ativo));
+        planner.append(secao);
+    }
+    if (!profissionais.length) {
+        planner.append(elem("p", "Cadastre ou ative um barbeiro para visualizar os horários.", "ajuda"));
+    }
+    rotularHorariosLivres(planner);
+    const agenda = painel("Agenda do dia", planner);
+    const topo = elem("header", undefined, "agenda-dia-topo");
+    topo.append(agenda.querySelector("h2"), filtroDeBarbeiro(barbeiros));
+    agenda.prepend(topo);
+    return agenda;
+}
+
+function apresentarHoje(dia, agenda, resumo, barbeiros) {
     const hojeLocal = `${hoje()}T${horaIso.format(new Date())}`;
-    const proximo = agenda.atendimentos.find((item) => item.status === "AGENDADO" && item.fim.slice(0, 16) > hojeLocal);
-    const lateral = elem("div", undefined, "resumo-hoje");
-    const detalhes = proximo
-        ? estatisticas([["Horário", proximo.inicio.slice(11, 16)], ["Cliente", proximo.clienteNome]], "totais-caixa")
-        : elem("p", "Nenhum atendimento restante na agenda.", "ajuda");
+    const pendentes = agenda.atendimentos.filter((item) => item.status === "AGENDADO" && item.fim.slice(0, 16) > hojeLocal);
+    const proximos = pendentes.filter((item) => item.inicio === pendentes[0]?.inicio);
+    const resumos = el("hoje-resumos");
+    const detalhes = elem("ul", undefined, "proximos-atendimentos");
+    for (const proximo of proximos) {
+        const linha = elem("li");
+        const horario = elem("time", proximo.inicio.slice(11, 16));
+        horario.dateTime = proximo.inicio;
+        const pessoa = elem("div", undefined, "proximo-cliente");
+        pessoa.append(elem("strong", proximo.clienteNome), elem("span", proximo.barbeiroNome));
+        linha.append(horario, pessoa);
+        detalhes.append(linha);
+    }
+    const titulo = proximos.length > 1 ? "Próximos atendimentos" : "Próximo atendimento";
     const { concluidos, avulsos, planos } = resumo.totais;
-    lateral.append(painel("Próximo atendimento", detalhes),
-        painel("Movimento do dia", estatisticas([
+    resumos.replaceChildren(painel(titulo, proximos.length ? detalhes
+        : elem("p", "Nenhum atendimento restante na agenda.", "ajuda")),
+        painel("Movimento da barbearia", estatisticas([
             ["Atendimentos realizados", concluidos],
             ["Recebido no dia", brl.format(avulsos + planos)],
         ], "totais-caixa")));
-    colunas.append(agendaDoDia(dia, agenda.faixas, agenda.atendimentos), lateral);
-    area.replaceChildren(colunas);
+    area.replaceChildren(agendaDoDia(dia, agenda.faixas, agenda.atendimentos, barbeiros));
 }
 
 function areaDaAgenda() {
@@ -420,14 +516,26 @@ function apresentarAgenda(itens, resultado, segunda) {
         if (dia <= dataAtual) {
             cabecalho.append(elem("span", dia === dataAtual ? "Hoje" : "Dia concluído", "planner-dia-marcacao"));
         }
-        const atendimentos = atendimentosPorDia.get(dia) ?? [];
+        const registros = atendimentosPorDia.get(dia) ?? [];
+        const atendimentos = registros.filter((item) => item.status !== "CANCELADO");
+        const cancelados = registros.filter((item) => item.status === "CANCELADO");
         const lista = elem("ol", undefined, "planner-horarios");
         for (const atendimento of atendimentos) lista.append(blocoDoPlanner(atendimento));
         coluna.append(cabecalho, atendimentos.length ? lista : elem("p", "Sem atendimentos", "planner-vazio"));
+        if (cancelados.length) {
+            const historico = elem("details", undefined, "planner-cancelados");
+            const listaCancelados = elem("ul", undefined, "planner-horarios");
+            for (const cancelado of cancelados) listaCancelados.append(blocoDoPlanner(cancelado, true));
+            historico.append(elem("summary", `Cancelados (${cancelados.length})`, "resumo-cancelados"), listaCancelados);
+            coluna.append(historico);
+        }
         planner.append(coluna);
     }
     dataRenderizadaAgenda = dataAtual;
-    resultado.replaceChildren(planner);
+    const legenda = elem("ul", undefined, "planner-legenda");
+    legenda.setAttribute("aria-label", "Legenda dos riscos");
+    legenda.append(elem("li", "Concluído", "risco-concluido"), elem("li", "Falta", "risco-falta"));
+    resultado.replaceChildren(legenda, planner);
 }
 
 function atualizarRelogioDaAgenda() {
@@ -470,29 +578,28 @@ function tabela(titulos, linhas, vazio) {
     return caixa;
 }
 
-function grafico(dias, valor, formato, rotulo, diasDaSemana = []) {
-    const eixo = elem("div", undefined, "grafico-periodo");
-    const maximo = Math.max(1, ...dias.map(valor));
-    for (const [indice, dia] of dias.entries()) {
+function graficoDiario(dias, valor, formatar, minimoDaEscala) {
+    const lista = elem("ul", undefined, "grafico-diario");
+    const maximo = Math.max(minimoDaEscala, ...dias.map(valor));
+    const diaAtual = hoje();
+    for (const dia of dias) {
+        const linha = elem("li");
         const numero = valor(dia);
-        const coluna = elem("div", undefined, "grafico-coluna");
-        const diaLabel = diaCurto(dia.dia);
-        coluna.setAttribute("aria-label", `${diaLabel} · ${formato(numero)} ${rotulo}`);
-        coluna.title = coluna.getAttribute("aria-label");
-        const faixa = elem("span", undefined, "grafico-faixa");
-        const barra = elem("span", undefined, "grafico-barra");
-        barra.style.setProperty("--altura", `${numero / maximo * 100}%`);
-        barra.setAttribute("aria-hidden", "true");
+        const data = elem("time", diasGrafico.format(new Date(`${dia.dia}T00:00:00Z`)));
+        data.dateTime = dia.dia;
+        if (dia.dia === diaAtual) data.setAttribute("aria-current", "date");
+        const faixa = elem("span", undefined, "grafico-diario-faixa");
+        faixa.setAttribute("aria-hidden", "true");
+        const barra = elem("span");
+        barra.style.setProperty("--proporcao", `${numero / maximo * 100}%`);
         faixa.append(barra);
-        const numeroDia = dia.dia.slice(-2);
-        const nomeDoDia = diasDaSemana[indice];
-        coluna.append(faixa, elem("span", nomeDoDia ? `${nomeDoDia} ${numeroDia}` : numeroDia, "grafico-dia"));
-        eixo.append(coluna);
+        linha.append(data, faixa, elem("strong", formatar(numero)));
+        lista.append(linha);
     }
-    return eixo;
+    return lista;
 }
 
-function apresentarRelatorio(resumo, financeiro, resultado) {
+function apresentarRelatorio(resumo, financeiro, resultado, tipoPeriodo) {
     const { totais, dias } = resumo;
     const periodo = elem("p", resumo.inicio === resumo.fim ? diaCurto(resumo.inicio) :
         `${diaCurto(resumo.inicio)} a ${diaCurto(resumo.fim)}`, "faixa-periodo");
@@ -506,10 +613,9 @@ function apresentarRelatorio(resumo, financeiro, resultado) {
             ["Resultado de caixa", brl.format(totais.resultado)],
         ])));
         if (dias.length > 1) {
-            const rotulos = periodoRelatorio === "SEMANA" ? diasUteis : [];
-            const diasDoGrafico = rotulos.length ? dias.slice(0, rotulos.length) : dias;
+            const diasDoGrafico = tipoPeriodo === "SEMANA" ? dias.slice(0, 6) : dias;
             resultado.append(painel("Entradas por dia",
-                grafico(diasDoGrafico, (dia) => dia.avulsos + dia.planos, (valor) => brl.format(valor), "recebidos", rotulos)));
+                graficoDiario(diasDoGrafico, (dia) => dia.avulsos + dia.planos, (valor) => brl.format(valor), 1)));
         }
         resultado.append(painel("Despesas do período", tabela(["Data", "Descrição", "Valor"],
             resumo.despesas.map((d) => [diaCurto(d.dia), d.descricao, brl.format(d.valor)]),
@@ -520,7 +626,8 @@ function apresentarRelatorio(resumo, financeiro, resultado) {
             ["Cancelados", totais.cancelados], ["Faltas", totais.faltas],
         ])));
         if (dias.length > 1) {
-            resultado.append(painel("Atendimentos por dia", grafico(dias, (dia) => dia.concluidos, String, "atendimentos")));
+            resultado.append(painel("Atendimentos concluídos por dia",
+                graficoDiario(dias, (dia) => dia.concluidos, String, 4)));
         }
         resultado.append(painel("Serviços mais realizados", tabela(["Serviço", "Realizados", "Cobertos por plano"],
             resumo.servicos.map((s) => [s.nome, s.quantidade, s.cobertosPorPlano]),
@@ -528,12 +635,20 @@ function apresentarRelatorio(resumo, financeiro, resultado) {
     }
 }
 
-function areaDoRelatorio() {
+function areaDoRelatorio(aba) {
     const atual = el("relatorio-dados");
-    if (atual) return atual;
+    const filtrosFinanceiro = el("financeiro-filtros");
+    if (atual?.dataset.aba === aba && (aba !== "financeiro" || filtrosFinanceiro.childElementCount)) return atual;
     const resultado = elem("div", undefined, "relatorio-dados");
     resultado.id = "relatorio-dados";
-    area.replaceChildren(controlesRelatorio(), resultado);
+    resultado.dataset.aba = aba;
+    const controles = controlesRelatorio(filtrosRelatorio[aba]);
+    if (aba === "financeiro") {
+        filtrosFinanceiro.replaceChildren(controles);
+        area.replaceChildren(resultado);
+    } else {
+        area.replaceChildren(controles, resultado);
+    }
     return resultado;
 }
 
@@ -541,23 +656,37 @@ async function carregar() {
     const pedido = ++sequencia;
     const aba = secao;
     const resultado = aba === "agenda" ? areaDaAgenda()
-        : aba === "financeiro" || aba === "atendimentos" ? areaDoRelatorio() : area;
+        : filtrosRelatorio[aba] ? areaDoRelatorio(aba) : area;
     area.setAttribute("aria-busy", "true");
     resultado.replaceChildren(elem("p", "Carregando…", "ajuda"));
     try {
+        let barbeiros;
+        const filtro = new URLSearchParams();
+        if (aba === "hoje" || aba === "agenda") {
+            barbeiros = await api("/barbeiros?incluirInativos=true");
+            if (pedido !== sequencia) return;
+            if (!barbeiros.some((barbeiro) => String(barbeiro.id) === barbeiroFiltrado)) barbeiroFiltrado = "";
+            if (barbeiroFiltrado) filtro.set("barbeiroId", barbeiroFiltrado);
+        }
         if (aba === "hoje") {
             const dia = hoje();
+            filtro.set("dia", dia);
             const [agenda, resumo] = await Promise.all([
-                api(`/planejamento_agenda?dia=${dia}`), api(`/relatorios?dia=${dia}&periodo=DIA`),
+                api(`/planejamento_agenda?${filtro}`), api(`/relatorios?dia=${dia}&periodo=DIA`),
             ]);
-            if (pedido === sequencia) apresentarHoje(dia, agenda, resumo);
+            if (pedido === sequencia) apresentarHoje(dia, agenda, resumo, barbeiros);
         } else if (aba === "agenda") {
+            el("agenda-barbeiro-filtro")?.parentElement.remove();
+            area.querySelector(".planner-controles").append(filtroDeBarbeiro(barbeiros));
             const segunda = segundaDaSemana(diaAgenda);
-            const itens = await api(`/agendamentos?dia=${segunda}&semana=true`);
+            filtro.set("dia", segunda);
+            filtro.set("semana", "true");
+            const itens = await api(`/agendamentos?${filtro}`);
             if (pedido === sequencia) apresentarAgenda(itens, resultado, segunda);
         } else {
-            const resumo = await api(`/relatorios?dia=${diaRelatorio}&periodo=${periodoRelatorio}`);
-            if (pedido === sequencia) apresentarRelatorio(resumo, aba === "financeiro", resultado);
+            const { dia, periodo } = filtrosRelatorio[aba];
+            const resumo = await api(`/relatorios?dia=${dia}&periodo=${periodo}`);
+            if (pedido === sequencia) apresentarRelatorio(resumo, aba === "financeiro", resultado, periodo);
         }
     } catch (falha) {
         if (pedido === sequencia) {
@@ -569,10 +698,11 @@ async function carregar() {
     }
 }
 
-export function mostrarOperacao(aba, aoSair, mostrarAviso) {
+export function mostrarOperacao(aba, aoSair, mostrarAviso, mostrarFicha) {
     secao = aba;
     aoExpirar = aoSair;
     informar = mostrarAviso;
+    abrirFicha = mostrarFicha;
     return carregar();
 }
 
@@ -591,7 +721,9 @@ function entrada(nome, tipo, valor = "") {
     return input;
 }
 
-function abrirFormulario(titulo, acao, textoBotao = "Salvar") {
+function abrirFormulario(titulo, acao, {
+    textoBotao = "Salvar", classeBotao = "primario", textoCancelar = "Cancelar",
+} = {}) {
     if (dialogo.open) return null;
     const atual = { acao, ocupado: false };
     edicao = atual;
@@ -600,6 +732,8 @@ function abrirFormulario(titulo, acao, textoBotao = "Salvar") {
     campos.replaceChildren();
     confirmar.disabled = false;
     confirmar.textContent = textoBotao;
+    confirmar.className = `botao ${classeBotao}`;
+    cancelarOperacao.textContent = textoCancelar;
     dialogo.showModal();
     return atual;
 }
@@ -720,11 +854,16 @@ async function abrirAgenda(item) {
     const hora = elem("select");
     hora.id = "agenda-hora";
     hora.required = true;
+    const barbeiro = elem("select");
+    barbeiro.id = "agenda-barbeiro";
+    barbeiro.required = true;
+    barbeiro.disabled = true;
+    barbeiro.add(new Option("Carregando barbeiros…", ""));
     let cliente;
     const servicos = elem("fieldset", undefined, "servicos-agenda");
     const atuais = () => [...servicos.querySelectorAll("input:checked")].map((input) => Number(input.value));
     const atual = abrirFormulario(item ? "Remarcar atendimento" : "Agendar atendimento", async () => {
-        const dados = { dia: dia.value, hora: hora.value };
+        const dados = { dia: dia.value, hora: hora.value, barbeiroId: Number(barbeiro.value) };
         if (item) {
             await api(`/atualizar_agendamento/${item.id}`, { metodo: "PUT", dados });
         } else {
@@ -733,6 +872,7 @@ async function abrirAgenda(item) {
             });
         }
         diaAgenda = dia.value;
+        if (barbeiroFiltrado) barbeiroFiltrado = barbeiro.value;
         return item ? "Atendimento remarcado." : "Atendimento agendado.";
     });
     if (!atual) return;
@@ -740,7 +880,9 @@ async function abrirAgenda(item) {
     dia.min = hoje();
     let pedido = 0;
     const atualizarConfirmacao = () => {
-        if (edicao === atual && !atual.ocupado) confirmar.disabled = hora.disabled || (!item && !cliente);
+        if (edicao === atual && !atual.ocupado) {
+            confirmar.disabled = !barbeiro.value || hora.disabled || !hora.value || (!item && !cliente);
+        }
     };
     atual.atualizarConfirmacao = atualizarConfirmacao;
     const buscarHorarios = async () => {
@@ -748,11 +890,12 @@ async function abrirAgenda(item) {
         mensagemDialogo();
         hora.disabled = true;
         atualizarConfirmacao();
-        hora.replaceChildren(new Option("Escolha os serviços e a data", ""));
+        hora.replaceChildren(new Option("Escolha o barbeiro, os serviços e a data", ""));
         const ids = atuais();
-        if (!dia.value || (!item && !ids.length)) return;
+        if (!barbeiro.value || !dia.value || (!item && !ids.length)) return;
         hora.options[0].text = "Buscando horários…";
-        const query = new URLSearchParams({ dia: dia.value });
+        const query = new URLSearchParams({ dia: dia.value, barbeiroId: barbeiro.value });
+        if (cliente) query.set("clienteId", cliente.id);
         if (item) query.set("atendimentoId", item.id);
         else query.set("servicoIds", ids.join(","));
         try {
@@ -767,7 +910,28 @@ async function abrirAgenda(item) {
         }
     };
     dia.addEventListener("change", buscarHorarios);
-    campos.append(rotular("Data do atendimento", dia));
+    barbeiro.addEventListener("change", buscarHorarios);
+    hora.addEventListener("change", atualizarConfirmacao);
+    campos.append(rotular("Barbeiro", barbeiro), rotular("Data do atendimento", dia));
+    try {
+        const profissionais = await api("/barbeiros");
+        if (edicao !== atual) return;
+        barbeiro.replaceChildren(new Option(profissionais.length ? "Selecione o barbeiro" : "Cadastre ou ative um barbeiro", ""));
+        for (const profissional of profissionais) barbeiro.add(new Option(profissional.nome, profissional.id));
+        barbeiro.value = String(item?.barbeiroId ?? barbeiroFiltrado);
+        barbeiro.disabled = !profissionais.length;
+        if (!profissionais.length) {
+            campos.append(elem("p", "Cadastre um profissional ativo na aba Barbeiros para agendar.", "ajuda"));
+        } else if (item && !barbeiro.value) {
+            campos.append(elem("p", "O barbeiro deste atendimento está inativo. Selecione outro profissional.", "ajuda"));
+        }
+    } catch (falha) {
+        if (edicao === atual) {
+            barbeiro.replaceChildren(new Option("Não foi possível carregar os barbeiros", ""));
+            erro(falha, true);
+        }
+        return;
+    }
     if (item) {
         campos.append(elem("p", `${item.clienteNome} · ${item.servicos.map((s) => s.nome).join(" · ")}`, "ajuda"));
         campos.append(rotular("Novo horário", hora));
@@ -796,6 +960,7 @@ async function abrirAgenda(item) {
     const busca = buscaClienteAgenda(atual, async (selecionado) => {
         const pedidoPlano = ++consultaPlano;
         cliente = selecionado;
+        buscarHorarios();
         periodo = undefined;
         saldo.classList.remove("saldo-com-plano");
         saldo.replaceChildren();
@@ -836,7 +1001,7 @@ async function abrirAgenda(item) {
     servicos.append(elem("legend", "Serviços"));
     campos.append(busca.grupo, saldo, servicos, rotular("Horário", hora));
     hora.disabled = true;
-    hora.add(new Option("Escolha os serviços e a data", ""));
+    hora.add(new Option("Escolha o barbeiro, os serviços e a data", ""));
     busca.campo.focus();
     try {
         const catalogo = await api("/servicos");
@@ -847,7 +1012,7 @@ async function abrirAgenda(item) {
             check.value = servico.id;
             const label = elem("label", undefined, "servico-agenda");
             const nome = elem("span", servico.nome, "servico-agenda-nome");
-            const cobertura = elem("span", "Previsto no plano", "cobertura-agenda");
+            const cobertura = elem("span", "Com saldo no plano", "cobertura-agenda");
             etiquetas.set(servico.id, cobertura);
             nome.append(cobertura);
             label.append(check, nome, elem("span", `${servico.duracaoMinutos} min`, "ajuda"));
@@ -862,18 +1027,64 @@ async function abrirAgenda(item) {
 
 function confirmarSituacao(item, status) {
     const titulos = { CONCLUIDO: "Concluir atendimento", CANCELADO: "Cancelar atendimento", FALTOU: "Registrar falta" };
+    const concluindo = status === "CONCLUIDO";
+    const cancelando = status === "CANCELADO";
+    let totalConfirmado;
+    const resumoValor = elem("p", "Consultando valor avulso…", "ajuda");
+    resumoValor.setAttribute("role", "status");
     const atual = abrirFormulario(titulos[status], async () => {
-        const salvo = await api(`/status_agendamento/${item.id}`, { metodo: "PUT", dados: { status } });
-        if (status === "CONCLUIDO") {
+        let salvo;
+        try {
+            salvo = await api(`/status_agendamento/${item.id}`, {
+                metodo: "PUT", dados: { status, valorAvulsoConfirmado: totalConfirmado },
+            });
+        } catch (falha) {
+            if (concluindo && falha.status === 409 && edicao === atual) await consultarTotal();
+            throw falha;
+        }
+        if (concluindo) {
             const total = salvo.servicos.reduce((soma, s) => soma + s.valorCobrado, 0);
             return total ? `Atendimento concluído. Valor avulso: ${brl.format(total)}.` : "Atendimento concluído.";
         }
-        return status === "CANCELADO" ? "Atendimento cancelado." : "Falta registrada.";
-    }, "Confirmar");
+        return cancelando ? "Atendimento cancelado." : "Falta registrada.";
+    }, {
+        textoBotao: cancelando ? "Confirmar cancelamento" : "Confirmar",
+        classeBotao: concluindo || cancelando ? "concluir" : "marcar-falta",
+        textoCancelar: cancelando ? "Não cancelar" : "Cancelar",
+    });
     if (!atual) return;
     campos.append(elem("p", `${item.clienteNome} · ${item.inicio.slice(11, 16)}`));
-    if (status === "CONCLUIDO") {
-        campos.append(elem("p", "Ao confirmar, o sistema usa os benefícios disponíveis e registra os itens avulsos no caixa.", "ajuda"));
+    if (!concluindo) return;
+    atual.atualizarConfirmacao = () => {
+        if (edicao === atual && !atual.ocupado) confirmar.disabled = totalConfirmado === undefined;
+    };
+    const tentar = botao("Consultar valor novamente", () => consultarTotal(), "secundario");
+    tentar.hidden = true;
+    campos.append(resumoValor, elem("p", "Ao confirmar, o sistema usa os benefícios disponíveis e registra os itens avulsos no caixa.", "ajuda"), tentar);
+    consultarTotal();
+
+    async function consultarTotal() {
+        totalConfirmado = undefined;
+        atual.atualizarConfirmacao();
+        tentar.hidden = true;
+        resumoValor.textContent = "Consultando valor avulso…";
+        try {
+            const { previsao } = await api(`/agendamentos/${item.id}`);
+            if (edicao !== atual) return;
+            totalConfirmado = previsao?.valorAvulsoAgora;
+            resumoValor.textContent = totalConfirmado === undefined
+                ? "O atendimento já passou para outra situação."
+                : `Total avulso ao concluir agora: ${brl.format(totalConfirmado)}.`;
+        } catch (falha) {
+            if (edicao !== atual) return;
+            if (falha.status === 401) erro(falha, true);
+            else {
+                resumoValor.textContent = "Não foi possível consultar o valor avulso.";
+                tentar.hidden = false;
+            }
+        } finally {
+            atual.atualizarConfirmacao();
+        }
     }
 }
 
@@ -889,7 +1100,7 @@ function abrirDespesa() {
         await api("/cadastrar_despesa", {
             metodo: "POST", dados: { dia: dia.value, descricao: descricao.value, valor: Number(valor.value) },
         });
-        diaRelatorio = dia.value;
+        filtrosRelatorio.financeiro.dia = dia.value;
         if (secao === "financeiro") area.replaceChildren();
         return "Despesa registrada.";
     });
@@ -915,7 +1126,7 @@ function fecharDialogo() {
 }
 
 el("operacao-fechar").addEventListener("click", fecharDialogo);
-el("operacao-cancelar").addEventListener("click", fecharDialogo);
+cancelarOperacao.addEventListener("click", fecharDialogo);
 el("atendimento-fechar").addEventListener("click", () => detalhesAtendimento.close());
 dialogo.addEventListener("cancel", (evento) => {
     if (edicao?.ocupado) evento.preventDefault();
@@ -926,7 +1137,7 @@ el("operacao-form").addEventListener("submit", async (evento) => {
     const atual = edicao;
     if (!atual || atual.ocupado || confirmar.disabled) return;
     atual.ocupado = true;
-    confirmar.disabled = el("operacao-fechar").disabled = el("operacao-cancelar").disabled = true;
+    confirmar.disabled = el("operacao-fechar").disabled = cancelarOperacao.disabled = true;
     mensagemDialogo();
     try {
         const aviso = await atual.acao();
@@ -946,7 +1157,7 @@ el("operacao-form").addEventListener("submit", async (evento) => {
         if (edicao === atual) erro(falha, true);
     } finally {
         atual.ocupado = false;
-        confirmar.disabled = el("operacao-fechar").disabled = el("operacao-cancelar").disabled = false;
+        confirmar.disabled = el("operacao-fechar").disabled = cancelarOperacao.disabled = false;
         atual.atualizarConfirmacao?.();
     }
 });

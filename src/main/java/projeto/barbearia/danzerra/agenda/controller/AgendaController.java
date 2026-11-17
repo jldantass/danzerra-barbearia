@@ -40,8 +40,9 @@ public class AgendaController {
 
     @GetMapping("/agendamentos")
     public List<Atendimento> listar(@RequestParam LocalDate dia,
-            @RequestParam(defaultValue = "false") boolean semana) {
-        return semana ? agenda.listarSemana(dia) : agenda.listar(dia);
+            @RequestParam(defaultValue = "false") boolean semana,
+            @RequestParam(required = false) Long barbeiroId) {
+        return agenda.listar(dia, semana, barbeiroId);
     }
 
     @GetMapping("/agendamentos/{id}")
@@ -54,16 +55,24 @@ public class AgendaController {
         return agenda.listarPorCliente(clienteId);
     }
 
+    @GetMapping("/agendamentos_barbeiro/{barbeiroId}")
+    public List<Atendimento> listarPorBarbeiro(@PathVariable long barbeiroId) {
+        return agenda.listarAgendadosPorBarbeiro(barbeiroId);
+    }
+
     @GetMapping("/planejamento_agenda")
-    public PlanejamentoDia planejarDia(@RequestParam LocalDate dia) {
-        return agenda.planejarDia(dia);
+    public PlanejamentoDia planejarDia(@RequestParam LocalDate dia,
+            @RequestParam(required = false) Long barbeiroId) {
+        return agenda.planejarDia(dia, barbeiroId);
     }
 
     @GetMapping("/horarios_agenda")
     public List<LocalTime> horarios(@RequestParam LocalDate dia,
             @RequestParam(required = false) List<Long> servicoIds,
-            @RequestParam(required = false) Long atendimentoId) {
-        return agenda.horarios(dia, servicoIds, atendimentoId);
+            @RequestParam(required = false) Long atendimentoId,
+            @RequestParam Long barbeiroId,
+            @RequestParam(required = false) Long clienteId) {
+        return agenda.horarios(dia, servicoIds, atendimentoId, barbeiroId, clienteId);
     }
 
     @PostMapping("/cadastrar_agendamento")
@@ -79,7 +88,7 @@ public class AgendaController {
 
     @PutMapping("/status_agendamento/{id}")
     public Atendimento status(@PathVariable long id, @Valid @RequestBody Situacao dados) {
-        return agenda.atualizarStatus(id, dados.status());
+        return agenda.atualizarStatus(id, dados);
     }
 
     @ExceptionHandler(AgendaException.class)

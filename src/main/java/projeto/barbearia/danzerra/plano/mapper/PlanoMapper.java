@@ -14,7 +14,8 @@ public final class PlanoMapper {
     public static PlanoResponse paraResponse(Plano plano) {
         List<PlanoResponse.Beneficio> beneficios = plano.getBeneficios().stream()
                 .map(beneficio -> new PlanoResponse.Beneficio(
-                        beneficio.getServicoId(), beneficio.getServicoNome(), beneficio.getQuantidade()))
+                        beneficio.getServicoId(), beneficio.getServicoNome(),
+                        beneficio.getQuantidade(), beneficio.temServicoAtivo()))
                 .sorted(Comparator.comparing(PlanoResponse.Beneficio::servicoNome)
                         .thenComparing(PlanoResponse.Beneficio::servicoId, Comparator.nullsLast(Long::compareTo)))
                 .toList();

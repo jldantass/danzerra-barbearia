@@ -33,8 +33,22 @@ public class AgendaRepository {
         return consultar("a.inicio >= ? AND a.inicio < ?", inicio.atStartOfDay(), fimExclusivo.atStartOfDay());
     }
 
+    public List<Atendimento> listarPorBarbeiro(LocalDate inicio, LocalDate fimExclusivo, long barbeiroId) {
+        return consultar("a.inicio >= ? AND a.inicio < ? AND a.barbeiro_id = ?",
+                inicio.atStartOfDay(), fimExclusivo.atStartOfDay(), barbeiroId);
+    }
+
     public List<Atendimento> listarPorCliente(long clienteId) {
         return consultar("a.cliente_id = ?", clienteId);
+    }
+
+    public List<Atendimento> listarAgendadosPorBarbeiro(long barbeiroId) {
+        return consultar("a.barbeiro_id = ? AND a.status = 'AGENDADO'", barbeiroId);
+    }
+
+    public List<Atendimento> listarPendentesNoPeriodo(long clienteId, LocalDate inicio, LocalDate vencimento) {
+        return consultar("a.cliente_id = ? AND a.status = 'AGENDADO' AND a.inicio >= ? AND a.inicio < ?",
+                clienteId, inicio.atStartOfDay(), vencimento.plusDays(1).atStartOfDay());
     }
 
     public Optional<Atendimento> buscar(long id) {
@@ -44,9 +58,11 @@ public class AgendaRepository {
     private List<Atendimento> consultar(String filtro, Object... argumentos) {
         return banco.query("""
                 SELECT a.id, a.inicio, a.fim, a.status, c.id AS cliente_id, c.nome AS cliente,
+                       b.id AS barbeiro_id, b.nome AS barbeiro,
                        s.servico_id, s.nome, s.duracao_minutos, s.preco_avulso, s.corte,
                        s.valor_cobrado, s.coberto_por_plano
                 FROM atendimentos a JOIN clientes c ON c.id = a.cliente_id
+                JOIN barbeiros b ON b.id = a.barbeiro_id
                 JOIN atendimento_servicos s ON s.atendimento_id = a.id
                 WHERE %s
                 ORDER BY a.inicio, a.id, s.servico_id
@@ -57,7 +73,8 @@ public class AgendaRepository {
                 Atendimento atendimento = agrupados.get(atendimentoId);
                 if (atendimento == null) {
                     atendimento = new Atendimento(atendimentoId, rs.getLong("cliente_id"),
-                            rs.getString("cliente"), rs.getObject("inicio", LocalDateTime.class),
+                            rs.getString("cliente"), rs.getLong("barbeiro_id"), rs.getString("barbeiro"),
+                            rs.getObject("inicio", LocalDateTime.class),
                             rs.getObject("fim", LocalDateTime.class), Status.valueOf(rs.getString("status")),
                             new ArrayList<>());
                     agrupados.put(atendimentoId, atendimento);
@@ -89,11 +106,13 @@ public class AgendaRepository {
         return nome.equalsIgnoreCase("Corte") || nome.equalsIgnoreCase("Corte de Cabelo");
     }
 
-    public boolean horarioOcupado(LocalDateTime inicio, LocalDateTime fim, long ignorarId) {
+    public boolean horarioOcupado(LocalDateTime inicio, LocalDateTime fim, long ignorarId,
+                                  long barbeiroId, Long clienteId) {
         return Boolean.TRUE.equals(banco.queryForObject("""
                 SELECT EXISTS (SELECT 1 FROM atendimentos
-                WHERE status IN ('AGENDADO', 'CONCLUIDO') AND id <> ? AND inicio < ? AND fim > ?)
-                """, Boolean.class, ignorarId, fim, inicio));
+                WHERE status IN ('AGENDADO', 'CONCLUIDO') AND id <> ? AND inicio < ? AND fim > ?
+                  AND (barbeiro_id = ? OR cliente_id = ?))
+                """, Boolean.class, ignorarId, fim, inicio, barbeiroId, clienteId));
     }
 
     public boolean temCorteAgendadoNoDia(long clienteId, LocalDate dia, long ignorarId) {
@@ -106,10 +125,10 @@ public class AgendaRepository {
                 """, Boolean.class, clienteId, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay(), ignorarId));
     }
 
-    public Long cadastrar(Long clienteId, LocalDateTime inicio, LocalDateTime fim, List<Item> servicos) {
+    public Long cadastrar(Long clienteId, Long barbeiroId, LocalDateTime inicio, LocalDateTime fim, List<Item> servicos) {
         Long id = banco.queryForObject("""
-                INSERT INTO atendimentos (cliente_id, inicio, fim) VALUES (?, ?, ?) RETURNING id
-                """, Long.class, clienteId, inicio, fim);
+                INSERT INTO atendimentos (cliente_id, barbeiro_id, inicio, fim) VALUES (?, ?, ?, ?) RETURNING id
+                """, Long.class, clienteId, barbeiroId, inicio, fim);
         for (Item item : servicos) {
             banco.update("""
                     INSERT INTO atendimento_servicos
@@ -120,8 +139,9 @@ public class AgendaRepository {
         return id;
     }
 
-    public void remarcar(long id, LocalDateTime inicio, LocalDateTime fim) {
-        banco.update("UPDATE atendimentos SET inicio = ?, fim = ? WHERE id = ?", inicio, fim, id);
+    public void remarcar(long id, LocalDateTime inicio, LocalDateTime fim, Long barbeiroId) {
+        banco.update("UPDATE atendimentos SET inicio = ?, fim = ?, barbeiro_id = ? WHERE id = ?",
+                inicio, fim, barbeiroId, id);
     }
 
     public Long buscarPeriodo(long cliente, LocalDate dia) {

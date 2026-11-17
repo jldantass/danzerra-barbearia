@@ -12,7 +12,11 @@
     --azul-escuro: #073246;
     --azul-claro: #d9f1fb;
     --erro: #9a2b35;
+    --erro-fundo: #f9eeec;
     --sucesso: #236341;
+    --sucesso-fundo: #eaf6ee;
+    --falta: #754b17;
+    --falta-fundo: #fbf1de;
     --pendente: #815315;
     --serifa: "Old Standard TT", Georgia, "Times New Roman", serif;
     font-family: "Segoe UI", system-ui, sans-serif;
@@ -142,6 +146,7 @@ html:has(.dialogo[open]) { overflow: hidden; }
 .conta-acoes .botao.discreto { padding-inline: .3rem; color: var(--azul-claro); font-size: .75rem; }
 
 .principal { width: min(100%, 87rem); margin-inline: auto; padding: 0 clamp(1.25rem, 4vw, 4.5rem) 3rem; }
+#painel:is([data-secao-atual="agenda"], [data-secao-atual="hoje"]) .principal { width: 100%; padding-inline: clamp(1rem, 2.4vw, 2.5rem); }
 .topo {
     min-height: 4.25rem;
     display: flex;
@@ -163,12 +168,33 @@ html:has(.dialogo[open]) { overflow: hidden; }
 }
 .cabecalho h1 { font: 600 3.45rem/1.04 var(--serifa); letter-spacing: -.04em; }
 .cabecalho p, .registro-topo p, .vazio p { margin-top: .45rem; color: var(--suave); font-size: .9rem; }
+#painel[data-secao-atual="hoje"] .cabecalho {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1.15rem 1.25rem;
+    margin-block: 1.65rem 1.5rem;
+}
+#painel[data-secao-atual="hoje"] .cabecalho > div:first-child { grid-column: 1 / -1; }
+#hoje-resumos { grid-column: 1; grid-row: 2; }
+#painel[data-secao-atual="hoje"] #novo { grid-column: 2; grid-row: 2; }
+#painel[data-secao-atual="financeiro"] .cabecalho {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1.6rem 1rem;
+    margin-bottom: 1.2rem;
+}
+#painel[data-secao-atual="financeiro"] .cabecalho > div:first-child { grid-column: 1 / -1; }
+#financeiro-filtros { grid-column: 1; grid-row: 2; min-width: 0; }
+#painel[data-secao-atual="financeiro"] #novo { grid-column: 2; grid-row: 2; min-height: 2.5rem; }
 .registro { border: 1px solid var(--linha); border-radius: 5px; overflow: hidden; background: var(--superficie); }
 .registro-topo { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.35rem; }
 .registro-topo h2, .vazio h3 { font-size: 1rem; font-weight: 660; }
 .registro-topo p { margin-top: .28rem; font-size: .8rem; }
-.busca { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.busca { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-width: 0; }
 .busca input { width: min(17rem, 25vw); }
+.busca select { width: auto; }
 .tabela-area { overflow-x: auto; }
 .tabela-area:focus-visible { outline-offset: -2px; }
 table { width: 100%; border-collapse: collapse; text-align: left; font-size: .875rem; }
@@ -226,8 +252,16 @@ tbody tr:hover { background: var(--azul-claro); }
 }
 .botao.nome-cliente:hover { text-decoration: underline; text-underline-offset: .18em; }
 .botao.apagar { color: var(--erro); }
+.botao.cancelar { background: var(--erro-fundo); border-color: var(--erro); color: var(--erro); }
+.botao.cancelar:hover:not(:disabled) { background: color-mix(in srgb, var(--erro-fundo), var(--erro) 10%); }
 .botao.destrutivo { background: var(--erro); color: #ffffff; }
-.botao.destrutivo:hover:not(:disabled) { background: var(--azul-claro); border-color: var(--erro); color: var(--erro); }
+.botao.destrutivo:hover:not(:disabled) { background: var(--erro-fundo); border-color: var(--erro); color: var(--erro); }
+.botao.concluir { background: var(--sucesso-fundo); border-color: var(--sucesso); color: var(--sucesso); }
+.botao.concluir:hover:not(:disabled) { background: color-mix(in srgb, var(--sucesso-fundo), var(--sucesso) 10%); }
+.botao.marcar-falta { background: var(--falta-fundo); border-color: var(--falta); color: var(--falta); }
+.botao.marcar-falta:hover:not(:disabled) { background: var(--falta); color: #ffffff; }
+.botao.primario.semana-atual { background: var(--lateral); font-weight: 730; }
+.botao.primario.semana-atual:hover:not(:disabled) { background: var(--azul-claro); }
 
 label { display: grid; gap: .45rem; font-size: .875rem; font-weight: 620; }
 input, select {
@@ -293,6 +327,8 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .perfil-conteudo { display: grid; gap: 1.15rem; padding: 1.3rem; }
 .perfil-conteudo > .botao { justify-self: start; }
 #perfil-celular { margin-top: .3rem; }
+#barbeiro-perfil-contato { margin-top: .3rem; }
+#barbeiro-perfil-agendamentos { margin-top: .75rem; }
 .perfil-plano { padding-block: 1rem; border-block: 1px solid var(--linha); }
 .perfil-plano h3 { margin: 0; font-size: 1rem; }
 .perfil-plano-topo { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .65rem; }
@@ -320,15 +356,43 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
     background: var(--fundo);
     text-align: left;
 }
-.botao.perfil-agendamento:hover { border-color: var(--azul); background: var(--azul-claro); }
+.botao.perfil-agendamento:hover { background: var(--azul-claro); }
 .perfil-agendamento > span:first-child { display: grid; gap: .15rem; min-width: 0; overflow-wrap: anywhere; }
 .perfil-agendamento time { font-variant-numeric: tabular-nums; }
 .perfil-agendamentos-historico { margin-top: .75rem; }
 .perfil-agendamentos-historico summary { margin-bottom: .45rem; color: var(--azul); font-size: .85rem; cursor: pointer; }
 
 #operacao, .relatorio-dados { display: grid; gap: 1.2rem; }
-.caderno-hoje { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(15rem, 1fr); gap: 1.25rem; align-items: start; }
-.resumo-hoje { display: grid; gap: 1.25rem; }
+.resumo-hoje {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-width: 0;
+    border: 1px solid var(--linha);
+    border-radius: 5px;
+    background: var(--superficie);
+    overflow: hidden;
+}
+.resumo-hoje .folha { padding: 1rem 1.2rem; border: 0; border-radius: 0; background: transparent; }
+.resumo-hoje .folha + .folha { border-left: 1px solid var(--linha); }
+.resumo-hoje .folha h2 { margin-bottom: .6rem; font-size: 1.1rem; letter-spacing: -.02em; }
+.resumo-hoje .folha p { margin: 0; font-size: .8rem; }
+.resumo-hoje .totais-caixa div { padding-block: .4rem; }
+.resumo-hoje .totais-caixa dd { font-size: .85rem; }
+.proximos-atendimentos { list-style: none; margin: 0; padding: 0; }
+.proximos-atendimentos li { display: grid; grid-template-columns: 3rem minmax(0, 1fr); align-items: start; gap: .55rem; }
+.proximos-atendimentos time { color: var(--azul-escuro); font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.proximo-cliente { display: grid; gap: .12rem; min-width: 0; font-size: .8rem; overflow-wrap: anywhere; }
+.proximo-cliente span { color: var(--suave); font-size: .75rem; }
+.proximos-atendimentos li + li {
+    margin-top: .6rem;
+    padding-top: .6rem;
+    border-top: 2px solid var(--azul);
+}
+.desempenho-barbeiros { margin-top: 1.5rem; }
+.desempenho-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; padding: 0 1.35rem 1rem; }
+.desempenho-filtros > select { width: auto; max-width: 100%; }
+.desempenho-nota { padding: 0 1.35rem .75rem; color: var(--suave); font-size: .8rem; }
+.desempenho-barbeiros th:last-child { width: auto; padding-inline-start: 1.2rem; }
 .folha {
     min-width: 0;
     border: 1px solid var(--linha);
@@ -343,14 +407,18 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .filtro-mes { display: flex; flex-wrap: wrap; gap: .55rem; }
 .filtro-mes select { min-width: 8.65rem; }
 .filtro-mes input[name="ano"] { width: 5.4rem; font-variant-numeric: tabular-nums; }
-.planner-topo { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .75rem 1.25rem; }
+.planner-topo { display: grid; gap: .8rem; }
+.planner-controles { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .8rem 1.25rem; }
+.planner-controles > label { min-width: 12rem; }
+.planner-navegacao { align-items: flex-end; }
+.planner-navegacao .botao { min-height: 2.5rem; }
 .planner-periodo { color: var(--azul-escuro); font: 600 clamp(1.35rem, 2.2vw, 1.75rem)/1.15 var(--serifa); }
 #agenda-dados { container-type: inline-size; }
 .planner {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 1px;
-    min-height: 21rem;
+    min-height: 27rem;
     border: 1px solid var(--linha);
     border-radius: 5px;
     overflow: hidden;
@@ -376,6 +444,14 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .planner-dia[data-estado="concluido"] .planner-dia-titulo { color: var(--suave); }
 .planner-horarios { display: grid; gap: .4rem; margin: 0; padding: .55rem; list-style: none; }
 .planner-vazio { padding: .85rem .75rem; color: var(--suave); font-size: .8rem; }
+.planner-legenda { display: flex; flex-wrap: wrap; gap: .35rem 1rem; margin: 0 0 .65rem; padding: 0; list-style: none; font-size: .8rem; }
+.planner-legenda li { display: flex; align-items: center; gap: .35rem; }
+.planner-legenda li::before { content: ""; inline-size: 1rem; border-top: 2px solid var(--cor-risco); }
+.risco-concluido { --cor-risco: var(--sucesso); }
+.risco-falta { --cor-risco: var(--falta); }
+.planner-cancelados { margin: .3rem .55rem .7rem; border-top: 1px solid var(--linha); }
+.planner-cancelados summary { padding-block: .45rem; color: var(--suave); font-size: .8rem; cursor: pointer; }
+.planner-cancelados .planner-horarios { padding: 0; }
 .botao.bloco-planner {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -389,13 +465,33 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
     color: var(--texto);
     text-align: left;
 }
-.botao.bloco-planner:hover { border-color: var(--azul); background: var(--azul-claro); }
+.botao.bloco-planner:hover { background: var(--azul-claro); }
 .botao.bloco-planner:focus-visible { outline-offset: 1px; }
 .horario-planner { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .42rem; font-variant-numeric: tabular-nums; }
-.horario-planner time { color: var(--azul-escuro); font: 600 1.2rem/1 var(--serifa); }
-.horario-planner span { color: var(--suave); font-size: .78rem; font-weight: 400; }
+.intervalo-planner { color: var(--azul-escuro); font: 600 1.08rem/1 var(--serifa); white-space: nowrap; }
+.duracao-planner { color: var(--suave); font-size: .78rem; font-weight: 400; }
 .cliente-planner { overflow-wrap: anywhere; }
+.barbeiro-planner { color: var(--suave); font-size: .75rem; overflow-wrap: anywhere; }
 .cliente-planner-ficha { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; min-width: 0; }
+.botao[data-status="CONCLUIDO"] { --cor-risco: var(--sucesso); --fundo-status: var(--sucesso-fundo); }
+.botao[data-status="FALTOU"] { --cor-risco: var(--falta); --fundo-status: var(--falta-fundo); }
+.bloco-planner:is([data-status="CONCLUIDO"], [data-status="FALTOU"]) :is(.intervalo-planner, .duracao-planner, .cliente-planner),
+.horario-hoje:is([data-status="CONCLUIDO"], [data-status="FALTOU"]) :is(time, strong) {
+    color: var(--cor-risco);
+    text-decoration: line-through;
+    text-decoration-color: var(--cor-risco);
+    text-decoration-thickness: .1em;
+}
+.horario-hoje[data-status="FALTOU"] small { color: var(--falta); }
+.botao:is(.bloco-planner, .ocupado-hoje):is([data-status="CONCLUIDO"], [data-status="FALTOU"]) {
+    background: var(--fundo-status);
+}
+.botao:is(.bloco-planner, .ocupado-hoje):is([data-status="CONCLUIDO"], [data-status="FALTOU"]):hover {
+    background: color-mix(in srgb, var(--fundo-status), var(--cor-risco) 8%);
+}
+.planner-cancelados .resumo-cancelados {
+    color: var(--erro);
+}
 @container (max-width: 62rem) {
     .planner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -409,18 +505,22 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 }
 .atendimento-conteudo { display: grid; gap: 1.15rem; padding: 1.3rem; }
 .atendimento-conteudo h2 { overflow-wrap: anywhere; }
+.atendimento-identidade { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .65rem; min-width: 0; }
+.atendimento-cliente { padding: 0; border: 0; background: transparent; color: var(--azul-escuro); font: inherit; text-align: start; cursor: pointer; }
+.atendimento-cliente:hover, .atendimento-cliente:focus-visible { text-decoration: underline; text-underline-offset: .18em; }
+#atendimento-fechar { flex: none; }
 #atendimento-dados { display: grid; gap: 1.15rem; }
 .atendimento-resumo {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .75rem 1.4rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
     margin: 0;
     padding: .8rem;
     border-radius: 5px;
     background: var(--fundo);
 }
 .atendimento-resumo dt { color: var(--suave); font-size: .8rem; }
-.atendimento-resumo dd { margin: .2rem 0 0; font-size: .9rem; font-weight: 650; }
+.atendimento-resumo dd { margin: .2rem 0 0; white-space: normal; overflow-wrap: anywhere; font-size: .9rem; font-weight: 650; }
 .atendimento-servicos h3 { margin: 0; font-size: 1rem; }
 .atendimento-servicos ul { margin: .45rem 0 0; padding: 0; list-style: none; }
 .atendimento-servicos li {
@@ -442,6 +542,23 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .desconto-atendimento { color: var(--suave); white-space: nowrap; }
 .faixa-periodo { color: var(--suave); font-size: .85rem; }
 .planner-hoje { display: grid; gap: 1rem; }
+.agendas-barbeiros { grid-template-columns: repeat(var(--barbeiros-visiveis, 1), minmax(0, 1fr)); gap: 1.25rem; }
+.agenda-barbeiro-hoje { min-width: 0; }
+.agenda-barbeiro-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .8rem;
+    padding: .65rem;
+    background: var(--fundo);
+}
+.agenda-barbeiro-topo h3 { margin: 0; color: var(--azul-escuro); font-size: 1rem; overflow-wrap: anywhere; }
+.agenda-dia-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 1.25rem; margin-bottom: 1rem; }
+.agenda-dia-topo h2 { margin: 0; }
+.agenda-dia-topo label { display: flex; align-items: center; gap: .65rem; color: var(--suave); font-size: .8rem; }
+.agenda-dia-topo select { width: min(17rem, 40vw); }
+.horarios-barbeiro { display: grid; gap: 1rem; }
 .faixa-hoje-topo {
     display: flex;
     flex-wrap: wrap;
@@ -450,10 +567,11 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
     gap: .15rem .6rem;
     padding: .45rem .65rem;
     border-block: 1px solid var(--linha);
-    background: var(--fundo);
+    color: var(--sobre-azul);
+    background: var(--lateral);
 }
-.faixa-hoje-topo h3 { margin: 0; font-size: .86rem; }
-.faixa-hoje-topo span { color: var(--suave); font-size: .76rem; font-variant-numeric: tabular-nums; }
+.faixa-hoje-topo h4 { margin: 0; font-size: .86rem; }
+.faixa-hoje-topo span { color: var(--azul-claro); font-size: .76rem; font-variant-numeric: tabular-nums; }
 .horarios-hoje { margin: 0; padding: 0; list-style: none; }
 .horarios-hoje li + li { border-top: 1px solid var(--linha); }
 .horario-hoje, .botao.horario-hoje {
@@ -469,6 +587,8 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 }
 .horario-hoje time { color: var(--azul-escuro); font-weight: 650; font-variant-numeric: tabular-nums; }
 .horario-hoje span { color: var(--suave); }
+.horario-hoje .horario-hoje-cliente { display: flex; flex-wrap: wrap; gap: .2rem .45rem; color: inherit; }
+.horario-hoje-cliente small { font-size: .78rem; font-weight: 400; }
 .horario-hoje .horario-passado { font-size: .8rem; }
 .botao.ocupado-hoje { background: var(--fundo); color: var(--azul-escuro); overflow-wrap: anywhere; }
 .botao.ocupado-hoje:hover { background: var(--azul-claro); }
@@ -490,11 +610,10 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 }
 .marcacao::before { content: ""; width: .38rem; height: .38rem; border-radius: 50%; background: currentColor; }
 .estado-agendado { color: var(--azul-escuro); background: var(--azul-claro); }
-.estado-concluido { color: var(--sucesso); background: #eaf6ee; }
-.estado-cancelado { color: #813b38; background: #f9eeec; }
-.estado-faltou { color: #754b17; background: #fbf1de; }
+.estado-concluido { color: var(--sucesso); background: var(--sucesso-fundo); }
+.estado-cancelado { color: var(--erro); background: var(--erro-fundo); }
+.estado-faltou { color: var(--falta); background: var(--falta-fundo); }
 .situacao-agenda .botao { min-height: 2.15rem; padding-inline: .6rem; font-size: .78rem; }
-.situacao-agenda .apagar { border-color: color-mix(in srgb, var(--erro) 65%, var(--superficie)); }
 .totais-caixa { display: grid; margin: 0; }
 .totais-caixa div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-top: 1px solid var(--linha); }
 .totais-caixa dt, .indicadores dt { color: var(--suave); font-size: .82rem; }
@@ -504,11 +623,28 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .indicadores dd { margin-top: .35rem; font: 600 1.45rem/1.1 var(--serifa); text-align: left; }
 .tabela-relatorio td { padding: .65rem 1rem; }
 .tabela-relatorio th:last-child { width: auto; padding-inline-start: 1.2rem; }
-.grafico-periodo { display: flex; gap: clamp(.18rem, 1vw, .7rem); min-height: 9rem; overflow-x: auto; }
-.grafico-coluna { display: grid; flex: 1 0 12px; grid-template-rows: 1fr auto; gap: .3rem; min-width: 0; text-align: center; }
-.grafico-faixa { position: relative; display: block; border-bottom: 1px solid var(--linha); background: #edf5f9; }
-.grafico-barra { position: absolute; inset: auto 0 0; height: var(--altura); background: var(--azul); }
-.grafico-dia { color: var(--suave); font-size: .72rem; }
+.grafico-diario {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    gap: .45rem .7rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.grafico-diario li {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    min-height: 2.1rem;
+    font-size: .86rem;
+    font-variant-numeric: tabular-nums;
+}
+.grafico-diario time { color: var(--suave); text-transform: capitalize; }
+.grafico-diario time[aria-current="date"] { color: var(--azul-escuro); font-weight: 700; }
+.grafico-diario strong { color: var(--azul-escuro); text-align: right; }
+.grafico-diario-faixa { display: block; height: .55rem; border-radius: 4px; background: var(--fundo); }
+.grafico-diario-faixa > span { display: block; width: var(--proporcao); height: 100%; border-radius: inherit; background: var(--azul); }
 .cliente-agenda { position: relative; }
 .retorno-cliente-agenda {
     position: absolute;
@@ -563,6 +699,11 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
 .servico-agenda-nome { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .5rem; overflow-wrap: anywhere; }
 .cobertura-agenda { padding: .1rem .38rem; border-radius: 4px; color: var(--azul-escuro); background: var(--azul-claro); font-size: .72rem; }
 
+@media (max-width: 1100px) {
+    #painel[data-secao-atual="hoje"] .cabecalho > div:first-child { grid-column: 1; }
+    #hoje-resumos { grid-column: 1 / -1; grid-row: 2; }
+    #painel[data-secao-atual="hoje"] #novo { grid-row: 1; }
+}
 @media (max-width: 880px) {
     .painel { grid-template-columns: 12rem minmax(0, 1fr); }
     .principal { padding-inline: 1.2rem; }
@@ -586,13 +727,17 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
     .cabecalho { align-items: start; margin-block: 1.6rem 1.15rem; }
     .cabecalho h1 { font-size: 2rem; }
     .cabecalho .botao { flex: none; }
+    #painel[data-secao-atual="financeiro"] .cabecalho { grid-template-columns: minmax(0, 1fr); }
+    #painel[data-secao-atual="financeiro"] #novo { grid-column: 1; grid-row: 3; justify-self: end; }
+    .planner-controles > label { width: 100%; }
     .registro-topo { align-items: stretch; flex-direction: column; padding: .9rem; }
     .busca input { width: 100%; }
     .tabela-area table, .tabela-area tbody { display: block; }
     .tabela-area thead { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
     .tabela-area tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .65rem; padding: .85rem .9rem; border-top: 1px solid var(--linha); }
     .tabela-area td { display: block; padding: 0; border: 0; }
-    .tabela-area td:not(:first-child, :last-child)::before {
+    .tabela-area td:not(:first-child, :last-child)::before,
+    .desempenho-barbeiros td:last-child::before {
         content: attr(data-coluna) / "";
         display: block;
         margin-bottom: .15rem;
@@ -600,9 +745,14 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; }
         font-size: .72rem;
     }
     .tabela-area td:first-child, .tabela-area td:last-child, .tabela-area td[data-coluna="Benefícios"] { grid-column: 1 / -1; }
+    .desempenho-barbeiros td:last-child { grid-column: auto; }
     td .acoes { justify-content: start; flex-wrap: wrap; }
     .paginacao { padding-inline: .6rem; justify-content: center; gap: .5rem; }
-    .caderno-hoje { grid-template-columns: 1fr; }
+    .agendas-barbeiros { grid-template-columns: minmax(0, 1fr); }
+    .resumo-hoje { grid-template-columns: minmax(0, 1fr); }
+    .resumo-hoje .folha + .folha { border-left: 0; border-top: 1px solid var(--linha); }
+    .agenda-dia-topo label { flex-wrap: wrap; width: 100%; }
+    .agenda-dia-topo select { width: 100%; }
     .folha { padding: 1rem; }
     .folha h2 { font-size: 1.4rem; }
     .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }

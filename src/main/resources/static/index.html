@@ -67,6 +67,12 @@
                         <path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" />
                     </svg><span>Clientes</span>
                 </button>
+                <button type="button" data-secao="barbeiros">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M2 21v-2a7 7 0 0 1 14 0v2 M17 3a4 4 0 0 1 0 8 M20 21v-2a7 7 0 0 0-3-5.7" />
+                    </svg><span>Barbeiros</span>
+                </button>
                 <button type="button" data-secao="servicos">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
@@ -109,6 +115,8 @@
                     <h1 id="secao-titulo" tabindex="-1"></h1>
                     <p id="secao-descricao"></p>
                 </div>
+                <div id="hoje-resumos" class="resumo-hoje" hidden></div>
+                <div id="financeiro-filtros" hidden></div>
                 <button id="novo" class="botao primario" type="button"></button>
             </header>
             <p id="painel-aviso" class="mensagem" role="status" hidden></p>
@@ -119,6 +127,11 @@
                     <div id="busca-clientes" class="busca" role="search" aria-label="Buscar clientes" hidden>
                         <label class="sr-only" for="busca-texto">Nome ou celular</label>
                         <input type="search" id="busca-texto" placeholder="Nome ou celular">
+                        <label class="sr-only" for="busca-plano">Filtrar clientes por plano</label>
+                        <select id="busca-plano">
+                            <option value="">Todos os clientes</option>
+                            <option value="true">Com plano ativo</option>
+                        </select>
                     </div>
                 </div>
                 <div id="resultados" aria-busy="false"></div>
@@ -127,6 +140,16 @@
                     <p id="pagina"></p>
                     <button id="proxima" class="botao secundario" type="button">Próxima</button>
                 </div>
+            </section>
+            <section id="desempenho-barbeiros" class="registro desempenho-barbeiros" aria-labelledby="desempenho-titulo" hidden>
+                <div class="registro-topo">
+                    <div>
+                        <h2 id="desempenho-titulo">Desempenho dos barbeiros</h2>
+                        <p>Compare os agendamentos e os atendimentos concluídos no período.</p>
+                    </div>
+                </div>
+                <div id="desempenho-filtros" class="desempenho-filtros"></div>
+                <div id="desempenho-resultados" aria-busy="false"></div>
             </section>
         </main>
     </div>
@@ -140,7 +163,7 @@
             <div id="editor-campos" class="editor-campos"></div>
             <p id="editor-erro" class="mensagem erro" role="alert" hidden></p>
             <footer class="dialogo-acoes">
-                <button class="botao secundario" type="button" data-fechar="editor">Cancelar</button>
+                <button class="botao cancelar" type="button" data-fechar="editor">Cancelar</button>
                 <button id="salvar" class="botao primario" type="submit">Salvar</button>
             </footer>
         </form>
@@ -152,7 +175,7 @@
             <p id="exclusao-texto"></p>
             <p id="exclusao-erro" class="mensagem erro" role="alert" hidden></p>
             <footer class="dialogo-acoes">
-                <button class="botao secundario" type="button" data-fechar="exclusao" autofocus>Cancelar</button>
+                <button class="botao cancelar" type="button" data-fechar="exclusao" autofocus>Cancelar</button>
                 <button class="botao destrutivo" type="submit">Apagar</button>
             </footer>
         </form>
@@ -176,7 +199,7 @@
                 </label>
                 <p id="perfil-ajuda" class="ajuda"></p>
                 <footer class="dialogo-acoes">
-                    <button id="perfil-cancelar" class="botao secundario" type="button">Cancelar</button>
+                    <button id="perfil-cancelar" class="botao cancelar" type="button">Cancelar</button>
                     <button id="perfil-confirmar" class="botao primario" type="submit">Confirmar</button>
                 </footer>
             </form>
@@ -187,10 +210,31 @@
         </section>
     </dialog>
 
+    <dialog id="perfil-barbeiro" class="dialogo" aria-labelledby="barbeiro-perfil-titulo">
+        <section class="perfil-conteudo">
+            <header class="dialogo-topo">
+                <div>
+                    <h2 id="barbeiro-perfil-titulo"></h2>
+                    <p id="barbeiro-perfil-contato" class="ajuda numero"></p>
+                </div>
+                <button id="barbeiro-perfil-fechar" class="botao discreto" type="button">Fechar</button>
+            </header>
+            <div id="barbeiro-perfil-status"></div>
+            <section class="perfil-agenda" aria-labelledby="barbeiro-agenda-titulo">
+                <h3 id="barbeiro-agenda-titulo">Agendamentos atuais</h3>
+                <p class="ajuda">Horários marcados e atendimentos pendentes de conclusão.</p>
+                <div id="barbeiro-perfil-agendamentos" aria-busy="false"></div>
+            </section>
+        </section>
+    </dialog>
+
     <dialog id="atendimento-detalhes" class="dialogo" aria-labelledby="atendimento-titulo">
         <div class="atendimento-conteudo">
             <header class="dialogo-topo">
-                <h2 id="atendimento-titulo"></h2>
+                <div class="atendimento-identidade">
+                    <h2 id="atendimento-titulo"><button id="atendimento-cliente" class="atendimento-cliente" type="button"></button></h2>
+                    <div id="atendimento-situacao"></div>
+                </div>
                 <button id="atendimento-fechar" class="botao discreto" type="button" autofocus>Fechar</button>
             </header>
             <div id="atendimento-dados"></div>
@@ -207,7 +251,7 @@
             <div id="operacao-campos" class="editor-campos"></div>
             <p id="operacao-erro" class="mensagem erro" role="alert" hidden></p>
             <footer class="dialogo-acoes">
-                <button id="operacao-cancelar" class="botao secundario" type="button">Cancelar</button>
+                <button id="operacao-cancelar" class="botao cancelar" type="button">Cancelar</button>
                 <button id="operacao-confirmar" class="botao primario" type="submit">Salvar</button>
             </footer>
         </form>

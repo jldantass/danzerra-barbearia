@@ -54,6 +54,7 @@ public class PlanoClienteService {
 
     @Transactional
     public PlanoClientePerfilResponse cadastrar(PlanoClienteCadastroRequest dados) {
+        planos.bloquearCatalogo();
         Cliente cliente = clientes.findClienteById(dados.clienteId())
                 .orElseThrow(() -> new ClienteNaoEncontradoException(dados.clienteId()));
 
@@ -67,6 +68,9 @@ public class PlanoClienteService {
         }
         if (!plano.isAtivo()) {
             throw new PlanoClienteConflitoException("Escolha um plano ativo do catálogo.");
+        }
+        if (plano.getBeneficios().stream().anyMatch(beneficio -> !beneficio.temServicoAtivo())) {
+            throw new PlanoClienteConflitoException("O plano tem um serviço inativo. Ajuste os benefícios para contratá-lo.");
         }
 
         PlanoCliente periodo = periodos.save(new PlanoCliente(cliente, plano, hoje));

@@ -1,5 +1,8 @@
 package projeto.barbearia.danzerra.cliente.service;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -16,6 +19,8 @@ import projeto.barbearia.danzerra.cliente.dto.ClienteAtualizacaoRequest;
 
 @Service
 public class ClienteService {
+
+    private static final ZoneId FUSO_BARBEARIA = ZoneId.of("America/Fortaleza");
 
     private final ClienteRepository clientes;
 
@@ -43,12 +48,12 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ClienteResponse> buscar(String nome, String celular, Pageable pagina) {
+    public Page<ClienteResponse> buscar(String nome, String celular, boolean planoAtivo, Pageable pagina) {
         String nomeFiltro = nome == null || nome.isBlank() ? "" : normalizarNome(nome);
         String celularFiltro = celular == null || celular.isBlank() ? "" : normalizarCelular(celular);
 
-        Page<Cliente> resultado = clientes.findByNomeContainingIgnoreCaseAndCelularContaining(
-                nomeFiltro, celularFiltro, pagina);
+        Page<Cliente> resultado = clientes.buscar(nomeFiltro, celularFiltro, planoAtivo,
+                LocalDate.now(FUSO_BARBEARIA), pagina);
 
         return resultado.map(ClienteMapper::paraResponse);
     }
