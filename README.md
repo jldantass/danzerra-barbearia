@@ -1,4 +1,4 @@
-# Danzerra — Gestão de barbearia
+# Sistema de Gestão de barbearia
 
 Sistema para organizar a rotina do balcão de uma barbearia: clientes, profissionais, serviços, planos mensais, agendamentos e movimento financeiro.
 
@@ -268,21 +268,8 @@ Para gerar o JAR após configurar o banco de testes:
 .\mvnw.cmd package
 ```
 
-## Aprendizados e próximas melhorias
-
-O projeto exercita separação de responsabilidades, injeção de dependências por construtor, DTOs com records, mapeamento, transações, migrations, tratamento de erros e integração do frontend com uma API autenticada.
-
-Próximos passos de estudo:
-
-- Ampliar os testes automatizados das regras de agenda e dos benefícios de planos.
-- Adicionar testes de acesso às rotas, CSRF e invalidação da sessão no logout.
-- Analisar o código com ferramentas de análise estática, como Semgrep, revisando os alertas antes de aplicar correções.
-- Explorar limitação de tentativas de login e registro de ações administrativas.
-
-O escopo atual é de aprendizado e portfólio, sem implantação em produção. Os relatórios pressupõem o recebimento dos valores registrados e o sistema possui somente o perfil administrativo.
-
 ## Autor
 
-**João Lucas Dantas** — estudante de Ciência da Computação com foco em backend.
+**João Lucas Dantas** — estudante de Ciência da Computação.
 
 [LinkedIn](https://www.linkedin.com/in/jldantas/) · [GitHub](https://github.com/jldantass)
